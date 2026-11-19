@@ -27,8 +27,8 @@ class PanelLayoutTests(unittest.TestCase):
  @classmethod
  def tearDownClass(cls):
   cls.browser.close();cls.pw.stop()
- def setUp(self):
-  self.context=self.browser.new_context(viewport={'width':1600,'height':1100})
+ def _open(self,timezone_id='UTC',locale='en-US',connected='Panel connected'):
+  self.context=self.browser.new_context(viewport={'width':1600,'height':1100},timezone_id=timezone_id,locale=locale)
   def serve(route):
    path=urlparse(route.request.url).path
    if path.endswith('bridge-sdk.js'):route.fulfill(body=BRIDGE,content_type='text/javascript; charset=utf-8');return
@@ -39,7 +39,9 @@ class PanelLayoutTests(unittest.TestCase):
   self.page=self.context.new_page();self.errors=[]
   self.page.on('pageerror',lambda e:self.errors.append(str(e)))
   self.page.goto('http://panel.test/index.html')
-  expect(self.page.locator('.connection')).to_have_text('Panel connected')
+  expect(self.page.locator('.connection')).to_have_text(connected)
+ def setUp(self):
+  self._open()
  def tearDown(self):
   self.context.close();self.assertEqual(self.errors,[])
  def test_theme_and_storage(self):
@@ -114,4 +116,54 @@ class PanelLayoutTests(unittest.TestCase):
     if os.environ.get('WOW_PANEL_SCREENSHOTS') and width in [1600,390]:
      out=Path(os.environ['WOW_PANEL_SCREENSHOTS']);out.mkdir(parents=True,exist_ok=True)
      p.screenshot(path=str(out/(ROOT.name+'-'+str(width)+'-'+theme+'.png')),full_page=True)
+ def test_language_toggle_switches_ui(self):
+  """右上角语言按钮：中 ↔ 英 互切，并写进 localStorage。"""
+  p=self.page
+  expect(p.locator('html')).to_have_attribute('lang','en')
+  # 按钮上显示的是"另一种语言"
+  expect(p.locator('#panelLang')).to_have_text('中文')
+  expect(p.locator('.nav-item').first.locator('.nav-text')).to_have_text('Overview')
+  p.locator('#panelLang').click()
+  expect(p.locator('html')).to_have_attribute('lang','zh-CN')
+  expect(p.locator('#panelLang')).to_have_text('EN')
+  expect(p.locator('.nav-item').first.locator('.nav-text')).to_have_text('总览')
+  expect(p.locator('.connection')).to_have_text('面板已连接')
+  self.assertEqual(p.evaluate("() => localStorage.getItem('panelLang')"),'zh')
+  # 手动选择优先于自动判断：刷新后仍是中文
+  p.reload()
+  expect(p.locator('html')).to_have_attribute('lang','zh-CN')
+  expect(p.locator('.nav-item').first.locator('.nav-text')).to_have_text('总览')
+  # 再点一次切回英文
+  p.locator('#panelLang').click()
+  expect(p.locator('html')).to_have_attribute('lang','en')
+  expect(p.locator('#panelLang')).to_have_text('中文')
+
+ def test_language_select_in_appearance(self):
+  """「界面外观」里的 Language 下拉同样能切语言。"""
+  p=self.page
+  p.locator('.nav-item').last.click()
+  expect(p.locator('#panelLangSelect')).to_be_visible()
+  p.locator('#panelLangSelect').select_option('zh')
+  expect(p.locator('html')).to_have_attribute('lang','zh-CN')
+  expect(p.locator('#panelLangSelect')).to_have_value('zh')
+
+ def test_language_auto_detected_by_timezone(self):
+  """中国时区自动中文，海外时区自动英文。"""
+  if ROOT.name!='blueprotocol-panel':return
+  self.context.close()
+  self._open(timezone_id='Asia/Shanghai',locale='zh-CN',connected='面板已连接')
+  expect(self.page.locator('html')).to_have_attribute('lang','zh-CN')
+  expect(self.page.locator('.nav-item').first.locator('.nav-text')).to_have_text('总览')
+  self.context.close()
+  self._open(timezone_id='America/New_York',locale='en-US')
+  expect(self.page.locator('html')).to_have_attribute('lang','en')
+  expect(self.page.locator('.nav-item').first.locator('.nav-text')).to_have_text('Overview')
+
+ def test_dynamic_content_follows_language(self):
+  """动态渲染的统计卡片也要跟着切语言重画。"""
+  p=self.page
+  stat=p.locator('#stats .stat .l').first
+  expect(stat).to_have_text('Push targets')
+  p.locator('#panelLang').click()
+  expect(stat).to_have_text('推送群')
 if __name__=='__main__':unittest.main()

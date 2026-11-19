@@ -1,5 +1,7 @@
 (function () {
   "use strict";
+  var I18N = window.BP_I18N || null;
+  function t(key, vars) { return I18N ? I18N.t(key, vars) : key; }
 
   var state = {
     meta: {},
@@ -10,7 +12,8 @@
     pickLoaded: false,
     records: [],
     shots: [],
-    testTarget: null
+    testTarget: null,
+    loaded: false
   };
 
   // ---------- 小工具 ----------
@@ -71,7 +74,7 @@
     return _modal({ prompt: true, title: title, message: message, value: value || "" });
   }
   function confirmModal(message, title) {
-    return _modal({ prompt: false, title: title || "Confirm", message: message });
+    return _modal({ prompt: false, title: title || t('confirm.defaultTitle'), message: message });
   }
 
   function fmtBytes(n) {
@@ -85,7 +88,7 @@
   function unwrap(resp) {
     if (resp && typeof resp === "object" && "status" in resp) {
       if (String(resp.status).toLowerCase() !== "ok") {
-        throw new Error(resp.message || "Request failed");
+        throw new Error(resp.message || t('error.request'));
       }
       return resp.data || {};
     }
@@ -135,9 +138,7 @@
     }));
   }
 
-  function fail(err) { toast((err && err.message) || "Action failed", true); }
-
-  function initTheme() { /* Theme is owned by shell.js. */ }
+  function fail(err) { toast((err && err.message) || t('error.generic'), true); }
 
   // ---------- 渲染 ----------
 
@@ -146,30 +147,29 @@
     var pill = byId("runPill");
     var hasGroups = (st.groups || []).length > 0;
     if (!hasGroups) {
-      pill.textContent = "No push targets";
+      pill.textContent = t('status.noTargets');
       pill.className = "pill warn";
     } else if (st.running) {
-      pill.textContent = "Scheduler running";
+      pill.textContent = t('status.running');
       pill.className = "pill";
     } else {
-      pill.textContent = "Scheduler not started";
+      pill.textContent = t('status.notStarted');
       pill.className = "pill off";
     }
     byId("stats").innerHTML = [
-      '<div class="stat"><div class="n">' + esc((st.groups || []).length) + '</div><div class="l">Push targets</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.last_check_text || "Never") + '</div><div class="l">Last check</div></div>',
-      '<div class="stat"><div class="n">' + (hasGroups ? (st.next_check_in || 0) + " s" : "—") + '</div><div class="l">Next check in</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.shot_count || 0) + '</div><div class="l">Image cache (' + fmtBytes(st.shot_bytes) + '</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.summary_cache_count || 0) + '</div><div class="l">Summary cache</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.record_count || 0) + '</div><div class="l">Push records</div></div>'
+      '<div class="stat"><div class="n">' + esc((st.groups || []).length) + '</div><div class="l">' + t('stat.targets') + '</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.last_check_text || t('stat.never')) + '</div><div class="l">' + t('stat.lastCheck') + '</div></div>',
+      '<div class="stat"><div class="n">' + (hasGroups ? (st.next_check_in || 0) + " s" : "—") + '</div><div class="l">' + t('stat.nextCheck') + '</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.shot_count || 0) + '</div><div class="l">' + t('stat.imageCache', { size: fmtBytes(st.shot_bytes) }) + '</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.summary_cache_count || 0) + '</div><div class="l">' + t('stat.summaryCache') + '</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.record_count || 0) + '</div><div class="l">' + t('stat.records') + '</div></div>'
     ].join("");
   }
 
   function renderGroups() {
     var tb = byId("groupBody");
     if (!state.groups.length) {
-      tb.innerHTML = '<tr><td colspan="5" class="empty">No push targets yet — click "Select groups…",' +
-        'or send \"bp push on\" in a group</td></tr>';
+      tb.innerHTML = '<tr><td colspan="5" class="empty">' + esc(t('groups.empty')) + "</td></tr>";
       return;
     }
     tb.innerHTML = state.groups.map(function (g) {
@@ -177,12 +177,12 @@
         '<td><input type="checkbox" data-act="check" data-umo="' + esc(g.umo) + '"' +
           (g.enabled ? " checked" : "") + "></td>" +
         "<td>" + esc(g.group_name || g.label) +
-          (g.group_name ? "" : ' <span class="tag warn">No name</span>') + "</td>" +
+          (g.group_name ? "" : ' <span class="tag warn">' + esc(t('group.noName')) + "</span>") + "</td>" +
         '<td class="nm">' + esc(g.group_id || "—") + "</td>" +
-        "<td>" + (g.last_pushed ? esc(g.last_pushed) : '<span class="hint">Never pushed</span>') + "</td>" +
+        "<td>" + (g.last_pushed ? esc(g.last_pushed) : '<span class="hint">' + esc(t('group.neverPushed')) + "</span>") + "</td>" +
         '<td class="acts">' +
-          '<button class="link" data-act="test" data-umo="' + esc(g.umo) + '">Test push</button>' +
-          '<button class="link danger" data-act="reset" data-umo="' + esc(g.umo) + '">Reset</button>' +
+          '<button class="link" data-act="test" data-umo="' + esc(g.umo) + '">' + esc(t('group.testPush')) + "</button>" +
+          '<button class="link danger" data-act="reset" data-umo="' + esc(g.umo) + '">' + esc(t('group.reset')) + "</button>" +
         "</td></tr>";
     }).join("");
   }
@@ -190,17 +190,17 @@
   function renderRecords() {
     var box = byId("recordList");
     if (!state.records.length) {
-      box.innerHTML = '<div class="empty">No push records yet (they appear after the first successful push)</div>';
+      box.innerHTML = '<div class="empty">' + esc(t('records.empty')) + "</div>";
       byId("recordHint").textContent = "";
       return;
     }
     box.innerHTML = state.records.map(function (r) {
       return '<div class="list-item"><span class="nm" title="' + esc(r.title) + '">' +
-        esc(r.label) + " · " + esc(r.title || "(empty)") + "</span>" +
-        (r.umo ? '<button class="link" data-act="reset-one" data-umo="' + esc(r.umo) + '">Reset</button>' : "") +
+        esc(r.label) + " · " + esc(r.title || t('records.emptyTitle')) + "</span>" +
+        (r.umo ? '<button class="link" data-act="reset-one" data-umo="' + esc(r.umo) + '">' + esc(t('records.resetOne')) + "</button>" : "") +
         "</div>";
     }).join("");
-    byId("recordHint").textContent = state.records.length + " record(s)";
+    byId("recordHint").textContent = t('records.count', { n: state.records.length });
   }
 
   function renderShots() {
@@ -208,13 +208,13 @@
     var total = 0;
     state.shots.forEach(function (s) { total += Number(s.size) || 0; });
     byId("shotHint").textContent = state.shots.length
-      ? state.shots.length + " image(s), " + fmtBytes(total) + " (keeps the newest 20 / 7 days)"
-      : "No cached images yet (they appear after the first announcement push)";
+      ? t('cache.info', { n: state.shots.length, size: fmtBytes(total) })
+      : t('cache.empty');
     if (!state.shots.length) { box.innerHTML = ""; return; }
     box.innerHTML = state.shots.map(function (s) {
       var inner = s.url
         ? '<img src="' + esc(s.url) + '" alt="' + esc(s.name) + '" loading="lazy">'
-        : '<div class="cap">(preview unavailable, filename only)</div>';
+        : '<div class="cap">' + esc(t('cache.noPreview')) + "</div>";
       return '<div class="thumb">' + inner +
         '<div class="cap">' + esc(s.modified_text) + "<br>" + fmtBytes(s.size) + "<br>" +
         esc(s.name) + "</div></div>";
@@ -228,7 +228,7 @@
     byId("cfgShotQuality").value = cfg.shot_quality == null ? "88" : cfg.shot_quality;
   }
 
-  // ---------- 数据加载 ----------
+  /* ---------- 数据加载 ---------- */
 
   function loadMeta() {
     return apiGet("page/meta").then(function (d) {
@@ -267,7 +267,9 @@
   }
 
   function loadAll() {
-    return Promise.all([loadMeta(), loadStatus(), loadRecords(), loadShots()]);
+    return Promise.all([loadMeta(), loadStatus(), loadRecords(), loadShots()]).then(function () {
+      state.loaded = true;
+    });
   }
 
   // ---------- 保存推送群 ----------
@@ -285,10 +287,10 @@
     var umos = checkedUmOs();
     var btn = byId("btnSaveGroups");
     btn.disabled = true;
-    byId("saveHint").textContent = "Saving…";
+    byId("saveHint").textContent = t('btn.saving');
     apiPost("page/groups/save", { groups: umos }).then(function () {
       byId("saveHint").textContent = "";
-      return loadAll().then(function () { toast("Saved " + umos.length + " push target(s)"); });
+      return loadAll().then(function () { toast(t('toast.saved', { n: umos.length })); });
     }).catch(fail).then(function () {
       btn.disabled = false;
       byId("saveHint").textContent = "";
@@ -300,10 +302,10 @@
   function pushAll() {
     var btn = byId("btnPushAll");
     btn.disabled = true;
-    byId("saveHint").textContent = "Checking for announcements…";
+    byId("saveHint").textContent = t('checking');
     apiPost("page/push-now", {}).then(function (d) {
       byId("saveHint").textContent = "";
-      toast(d.message || "Done", d.reason !== "ok" && d.reason !== "up_to_date");
+      toast(d.message || t('done'), d.reason !== "ok" && d.reason !== "up_to_date");
       return loadAll();
     }).catch(fail).then(function () {
       btn.disabled = false;
@@ -317,8 +319,10 @@
       if (state.groups[i].umo === umo) { row = state.groups[i]; }
     }
     state.testTarget = umo;
-    byId("testTarget").textContent = "Push to: " + (row ? (row.group_name || row.label) : umo) +
-      " (" + umo + ")";
+    byId("testTarget").textContent = t('test.target', {
+      name: row ? (row.group_name || row.label) : umo,
+      umo: umo
+    });
     byId("testResult").textContent = "";
     byId("testForce").checked = true;
     byId("testMask").hidden = false;
@@ -328,16 +332,16 @@
     if (!state.testTarget) return;
     var btn = byId("btnTestRun");
     btn.disabled = true;
-    byId("testResult").textContent = "Pushing…";
+    byId("testResult").textContent = t('pushing');
     apiPost("page/push-now", {
       umo: state.testTarget,
       force: byId("testForce").checked
     }).then(function (d) {
-      byId("testResult").textContent = d.message || "Done";
-      toast(d.message || "Done", !(d.pushed || []).length);
+      byId("testResult").textContent = d.message || t('done');
+      toast(d.message || t('done'), !(d.pushed || []).length);
       return loadAll();
     }).catch(function (err) {
-      byId("testResult").textContent = (err && err.message) || "Push failed";
+      byId("testResult").textContent = (err && err.message) || t('pushFailed');
       fail(err);
     }).then(function () { btn.disabled = false; });
   }
@@ -345,11 +349,11 @@
   // ---------- 推送记录 ----------
 
   function resetRecords(umo) {
-    var tip = umo ? "Reset the push record for this group?" : "Clear every push record? The next check will push the newest announcement again.";
-    confirmModal(tip, "Reset push records").then(function (ok) {
+    var tip = umo ? t('confirm.resetOne') : t('confirm.resetAll');
+    confirmModal(tip, t('confirm.resetTitle')).then(function (ok) {
       if (!ok) return;
       apiPost("page/records/reset", umo ? { umo: umo } : {}).then(function () {
-        return loadAll().then(function () { toast("Reset done"); });
+        return loadAll().then(function () { toast(t('toast.resetDone')); });
       }).catch(fail);
     });
   }
@@ -357,31 +361,31 @@
   // ---------- 缓存 / 参数 ----------
 
   function clearShots() {
-    confirmModal("Clear the image cache? The next push will render them again.", "Clear image cache").then(function (ok) {
+    confirmModal(t('confirm.clearImages'), t('confirm.clearImagesTitle')).then(function (ok) {
       if (!ok) return;
       apiPost("page/shots/clear", {}).then(function (d) {
-        return loadAll().then(function () { toast(d.message || "Cleared"); });
+        return loadAll().then(function () { toast(d.message || t('toast.cleared')); });
       }).catch(fail);
     });
   }
 
   function clearCache() {
     apiPost("page/cache/clear", {}).then(function (d) {
-      return loadAll().then(function () { toast(d.message || "Cleared"); });
+      return loadAll().then(function () { toast(d.message || t('toast.cleared')); });
     }).catch(fail);
   }
 
   function saveConfig() {
     var btn = byId("btnSaveConfig");
     btn.disabled = true;
-    byId("cfgHint").textContent = "Saving…";
+    byId("cfgHint").textContent = t('btn.saving');
     apiPost("page/config/save", {
       shot_enabled: byId("cfgShotEnabled").value === "1",
       shot_max_height: byId("cfgShotHeight").value.trim(),
       shot_quality: byId("cfgShotQuality").value.trim()
     }).then(function () {
       byId("cfgHint").textContent = "";
-      return loadMeta().then(function () { toast("Settings saved"); });
+      return loadMeta().then(function () { toast(t('toast.settingsSaved')); });
     }).catch(fail).then(function () {
       btn.disabled = false;
       byId("cfgHint").textContent = "";
@@ -404,9 +408,9 @@
       state.picked = next;
       renderPickList();
       byId("pickHint").textContent = d.total
-        ? d.total + " session(s), " + countPicked() + " selected"
-        : "No sessions yet — click \"Refresh group list\" or talk in a group first";
-      if (refresh) toast("Group list refreshed (" + (d.refreshed || 0) + " updated)");
+        ? t('pick.summary', { n: d.total, m: countPicked() })
+        : t('pick.empty');
+      if (refresh) toast(t('toast.refreshedGroups', { n: d.refreshed || 0 }));
       return state.pickGroups;
     });
   }
@@ -428,7 +432,7 @@
   function renderPickList() {
     var box = byId("pickList");
     if (!state.pickLoaded) {
-      box.innerHTML = '<div class="empty">Loading group list…</div>';
+      box.innerHTML = '<div class="empty">' + esc(t('pick.loading')) + "</div>";
       return;
     }
     var kw = (byId("pickSearch").value || "").trim().toLowerCase();
@@ -438,13 +442,13 @@
         .toLowerCase().indexOf(kw) >= 0;
     });
     if (!rows.length) {
-      box.innerHTML = '<div class="empty">No matching sessions. Try another term, or click "Refresh group list".</div>';
+      box.innerHTML = '<div class="empty">' + esc(t('pick.noMatch')) + "</div>";
       return;
     }
     box.innerHTML = rows.map(function (g) {
       var sub = [];
-      if (g.group_id) sub.push("ID " + g.group_id);
-      sub.push(g.source === "pushed" ? "in push list" : "seen by the bot");
+      if (g.group_id) sub.push(t('pick.id', { id: g.group_id }));
+      sub.push(g.source === "pushed" ? t('pick.inList') : t('pick.seen'));
       return '<label class="pick-item">' +
         '<input type="checkbox" data-pick="' + esc(g.value) + '"' +
           (state.picked[g.value] ? " checked" : "") + ">" +
@@ -484,14 +488,14 @@
     state.groups = rows;
     renderGroups();
     byId("pickMask").hidden = true;
-    toast(rows.length + " group(s) selected — remember to click \"Save push targets\"");
+    toast(t('toast.selected', { n: rows.length }));
   }
 
   // ---------- 绑定 & 启动 ----------
 
   function bind() {
     byId("btnReload").addEventListener("click", function () {
-      loadAll().then(function () { toast("Refreshed"); }).catch(fail);
+      loadAll().then(function () { toast(t('toast.refreshed')); }).catch(fail);
     });
     byId("btnSaveGroups").addEventListener("click", saveGroups);
     byId("btnPushAll").addEventListener("click", pushAll);
@@ -512,8 +516,9 @@
       var umo = box.getAttribute("data-pick");
       if (!umo) return;
       state.picked[umo] = box.checked;
-      byId("pickHint").textContent = state.pickGroups.length +
-        " session(s), " + countPicked() + " selected";
+      byId("pickHint").textContent = t('pick.summary', {
+        n: state.pickGroups.length, m: countPicked()
+      });
     });
 
     byId("groupBody").addEventListener("click", function (e) {
@@ -545,14 +550,24 @@
     });
   }
 
-  initTheme();
+  /* 切语言：把动态渲染的内容重画一遍 */
+  function rerender() {
+    if (!state.loaded) return;
+    renderStatus();
+    renderGroups();
+    renderRecords();
+    renderShots();
+    if (state.pickLoaded) renderPickList();
+  }
+  if (window.PanelI18n && window.PanelI18n.onChange) window.PanelI18n.onChange(rerender);
+
   bind();
-  byId("groupBody").innerHTML = '<tr><td colspan="5" class="empty">Connecting to the panel…</td></tr>';
+  byId("groupBody").innerHTML = '<tr><td colspan="5" class="empty">' + esc(t('connecting')) + "</td></tr>";
   waitForBridge()
     .then(loadAll)
     .catch(function (err) {
       byId("groupBody").innerHTML = '<tr><td colspan="5" class="empty">' +
-        esc((err && err.message) || "Failed to load") + "</td></tr>";
+        esc((err && err.message) || t('loadFailed')) + "</td></tr>";
       fail(err);
     });
 })();

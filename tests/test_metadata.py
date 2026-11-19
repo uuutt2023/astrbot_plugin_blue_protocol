@@ -75,20 +75,57 @@ def test_conf_schema_is_valid_json():
     assert 1 <= schema["shot_quality"]["default"] <= 100
 
 
+LOCALES = ("zh-CN", "en-US")
+
+
 def test_i18n_matches_panel_dir():
-    i18n = json.loads(_read(".astrbot-plugin", "i18n", "zh-CN.json"))
-    pages = i18n.get("pages") or {}
-    assert pages, "i18n 里没有 pages 配置"
     panel_dirs = {
         d for d in os.listdir(os.path.join(_ROOT, "pages"))
         if os.path.isdir(os.path.join(_ROOT, "pages", d))
     }
-    for key in pages:
-        assert key in panel_dirs, f"i18n 里的 {key} 没有对应的 pages/{key} 目录"
-    for key in panel_dirs:
-        assert key in pages, f"pages/{key} 缺少 i18n 条目"
-    meta = i18n.get("metadata") or {}
-    assert meta.get("display_name") == "Blue Protocol: Star Resonance"
+    for locale in LOCALES:
+        i18n = json.loads(_read(".astrbot-plugin", "i18n", f"{locale}.json"))
+        pages = i18n.get("pages") or {}
+        assert pages, f"{locale}.json 里没有 pages 配置"
+        for key in pages:
+            assert key in panel_dirs, f"{locale} i18n 里的 {key} 没有对应的 pages/{key} 目录"
+        for key in panel_dirs:
+            assert key in pages, f"pages/{key} 缺少 {locale} i18n 条目"
+        meta = i18n.get("metadata") or {}
+        # 展示名不随语言变化：项目名固定是 Blue Protocol: Star Resonance
+        assert meta.get("display_name") == "Blue Protocol: Star Resonance", locale
+
+
+def test_conf_schema_i18n_refs_resolve():
+    """_conf_schema.json 用 i18n: 前缀引用文案时，两种语言都得有对应条目。"""
+    schema = json.loads(_read("_conf_schema.json"))
+    for locale in LOCALES:
+        i18n = json.loads(_read(".astrbot-plugin", "i18n", f"{locale}.json"))
+        cfg = i18n.get("config") or {}
+        assert cfg, f"{locale}.json 缺少 config 段"
+        for key, spec in schema.items():
+            for field in ("description", "hint"):
+                ref = spec.get(field, "")
+                if not ref.startswith("i18n:"):
+                    continue
+                path = ref[5:].split(".")
+                node = i18n
+                for part in path:
+                    assert isinstance(node, dict) and part in node, (
+                        f"{locale}.json 缺少 {ref}（配置项 {key}.{field}）"
+                    )
+                    node = node[part]
+                assert isinstance(node, str) and node.strip(), f"{locale} 的 {ref} 是空的"
+
+
+def test_i18n_command_entries_present():
+    """两种语言都要给出指令说明。"""
+    for locale in LOCALES:
+        i18n = json.loads(_read(".astrbot-plugin", "i18n", f"{locale}.json"))
+        commands = i18n.get("commands") or {}
+        assert commands, f"{locale}.json 缺少 commands 段"
+        for key in ("bp_list", "bp_latest", "bp_push", "bp_reset"):
+            assert key in commands, f"{locale}.json 缺少 commands.{key}"
 
 
 def test_plugin_files_present():
@@ -109,7 +146,10 @@ def test_plugin_files_present():
         os.path.join("bpnews", "page.py"),
         os.path.join("templates", "article.html"),
         os.path.join("templates", "card.html"),
+        os.path.join(".astrbot-plugin", "i18n", "zh-CN.json"),
+        os.path.join(".astrbot-plugin", "i18n", "en-US.json"),
         os.path.join("pages", "blueprotocol-panel", "index.html"),
+        os.path.join("pages", "blueprotocol-panel", "i18n.js"),
         os.path.join("pages", "blueprotocol-panel", "shell.js"),
         os.path.join("pages", "blueprotocol-panel", "app.js"),
         os.path.join("pages", "blueprotocol-panel", "style.css"),

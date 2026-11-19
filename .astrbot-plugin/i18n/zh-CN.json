@@ -1,13 +1,55 @@
 {
   "metadata": {
     "display_name": "Blue Protocol: Star Resonance",
-    "short_desc": "Blue Protocol: Star Resonance announcement bot",
-    "desc": "Blue Protocol: Star Resonance (蓝色协议：星痕共鸣) official announcement bot — announcement list with paging and categories, latest announcement with summary and a phone-sized long image, per-group dedup, and scheduled auto-push (checked every 5 minutes). Includes a web panel to manage push targets by group name, trigger a push manually and browse the image gallery."
+    "short_desc": "Blue Protocol: Star Resonance 公告查询与自动推送",
+    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文摘要 + 手机长图）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），带 Web 面板按群名管理推送群、手动推送与长图画廊。"
+  },
+  "config": {
+    "news_groups": {
+      "description": "星痕共鸣公告定时推送的群（填群号或 unified_msg_origin，可多个）",
+      "hint": "也可在群里发「bp push on」自动登记本群，或在插件面板里按群名勾选（推荐）。留空则不自动推送"
+    },
+    "list_page_size": {
+      "description": "公告列表每页条数",
+      "hint": "「bp list」一次返回多少条。取 1-30 之间的整数"
+    },
+    "shot_enabled": {
+      "description": "公告图使用手机整页长图",
+      "hint": "开启后把公告正文渲染成手机视口长图；关闭或渲染失败时回退为深色卡片图"
+    },
+    "shot_max_height": {
+      "description": "长图最大高度（CSS 像素，0 = 不截断）",
+      "hint": "超长公告（如月度维护公告）会截取前面这么高，文字消息里提示看链接"
+    },
+    "shot_quality": {
+      "description": "长图 JPEG 质量（1-100）",
+      "hint": "越低越省流量。成图超过 2.5MB 时会自动继续降质/缩放"
+    }
   },
   "pages": {
     "blueprotocol-panel": {
-      "title": "Blue Protocol: Star Resonance — Announcements",
-      "description": "Manage push targets by group name, trigger a push manually, browse long images and push records"
+      "title": "Blue Protocol: Star Resonance 公告面板",
+      "description": "按群名管理推送群、立刻推送、查看长图与推送记录；面板右上角可切换中英文"
+    }
+  },
+  "commands": {
+    "bp_list": {
+      "description": "公告列表（支持分类与翻页）"
+    },
+    "bp_latest": {
+      "description": "最新公告（正文摘要 + 手机长图）"
+    },
+    "bp_latest_dedup": {
+      "description": "最新公告（有新公告才返回，按群去重）"
+    },
+    "bp_push": {
+      "description": "本群公告自动推送开关（每 5 分钟检查一次）"
+    },
+    "bp_reset": {
+      "description": "清空本群的公告推送记录"
+    },
+    "bp_help": {
+      "description": "查看插件指令用法"
     }
   }
 }

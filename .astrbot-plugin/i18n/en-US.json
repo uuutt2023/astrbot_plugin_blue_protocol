@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "display_name": "Blue Protocol: Star Resonance",
+    "short_desc": "Blue Protocol: Star Resonance announcement bot",
+    "desc": "Blue Protocol: Star Resonance (蓝色协议：星痕共鸣) official announcement bot — announcement list with paging and categories, latest announcement with summary and a phone-sized long image, per-group dedup, and scheduled auto-push (checked every 5 minutes). Includes a web panel to manage push targets by group name, trigger a push manually and browse the image gallery."
+  },
+  "config": {
+    "news_groups": {
+      "description": "Groups that receive scheduled Blue Protocol announcement pushes (group id or unified_msg_origin, multiple allowed)",
+      "hint": "Alternatively send \"bp push on\" in a group, or tick groups by name in the plugin panel (recommended). Empty means no automatic push."
+    },
+    "list_page_size": {
+      "description": "Announcements per page in the list command",
+      "hint": "How many rows \"bp list\" returns at once. Use an integer between 1 and 30."
+    },
+    "shot_enabled": {
+      "description": "Render announcements as a phone-sized long image",
+      "hint": "When enabled the announcement body is rendered into a long image; when disabled (or on failure) it falls back to the dark card image."
+    },
+    "shot_max_height": {
+      "description": "Maximum long-image height (CSS pixels, 0 = no limit)",
+      "hint": "Very long announcements are cut at this height and the text message points to the link."
+    },
+    "shot_quality": {
+      "description": "Long-image JPEG quality (1-100)",
+      "hint": "Lower saves bandwidth. Images above 2.5MB are downscaled automatically."
+    }
+  },
+  "pages": {
+    "blueprotocol-panel": {
+      "title": "Blue Protocol: Star Resonance — Announcements",
+      "description": "Manage push targets by group name, trigger a push manually, browse long images and push records; use the top-right button to switch between English and Chinese."
+    }
+  },
+  "commands": {
+    "bp_list": {
+      "description": "Announcement list (supports categories and paging)"
+    },
+    "bp_latest": {
+      "description": "Newest announcement (summary text + phone-sized long image)"
+    },
+    "bp_latest_dedup": {
+      "description": "Newest announcement (only replies when there is something new, per-group dedup)"
+    },
+    "bp_push": {
+      "description": "Toggle automatic announcement push for this group (checked every 5 minutes)"
+    },
+    "bp_reset": {
+      "description": "Clear this group's announcement push record"
+    },
+    "bp_help": {
+      "description": "Show the plugin command usage"
+    }
+  }
+}

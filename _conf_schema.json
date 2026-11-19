@@ -1,32 +1,32 @@
 {
   "news_groups": {
-    "description": "Groups that receive scheduled Blue Protocol announcement pushes (group id or unified_msg_origin, multiple allowed)",
+    "description": "i18n:config.news_groups.description",
+    "hint": "i18n:config.news_groups.hint",
     "type": "list",
-    "default": [],
-    "hint": "Alternatively send \"bp push on\" in a group, or tick groups by name in the plugin panel (recommended). Empty means no automatic push."
+    "default": []
   },
   "list_page_size": {
-    "description": "Announcements per page in the list command",
+    "description": "i18n:config.list_page_size.description",
+    "hint": "i18n:config.list_page_size.hint",
     "type": "int",
-    "default": 10,
-    "hint": "How many rows \"bp list\" returns at once. Use an integer between 1 and 30."
+    "default": 10
   },
   "shot_enabled": {
-    "description": "Render announcements as a phone-sized long image",
+    "description": "i18n:config.shot_enabled.description",
+    "hint": "i18n:config.shot_enabled.hint",
     "type": "bool",
-    "default": true,
-    "hint": "When enabled the announcement body is rendered into a long image; when disabled (or on failure) it falls back to the dark card image."
+    "default": true
   },
   "shot_max_height": {
-    "description": "Maximum long-image height (CSS pixels, 0 = no limit)",
+    "description": "i18n:config.shot_max_height.description",
+    "hint": "i18n:config.shot_max_height.hint",
     "type": "int",
-    "default": 5000,
-    "hint": "Very long announcements are cut at this height and the text message points to the link."
+    "default": 5000
   },
   "shot_quality": {
-    "description": "Long-image JPEG quality (1-100)",
+    "description": "i18n:config.shot_quality.description",
+    "hint": "i18n:config.shot_quality.hint",
     "type": "int",
-    "default": 88,
-    "hint": "Lower saves bandwidth. Images above 2.5MB are downscaled automatically."
+    "default": 88
   }
 }

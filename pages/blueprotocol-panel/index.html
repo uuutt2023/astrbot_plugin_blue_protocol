@@ -14,18 +14,18 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <h1>Blue Protocol: Star Resonance</h1>
+    <h1 data-i18n="top.title">Blue Protocol: Star Resonance</h1>
     <span class="pill" id="runPill">Loading…</span>
     <span class="spacer"></span>
-    <button id="btnPickGroup">Select groups…</button>
-    <button id="btnReload">Refresh</button>
+    <button id="btnPickGroup" data-i18n="top.pick">Select groups…</button>
+    <button id="btnReload" data-i18n="top.reload">Refresh</button>
   </div>
 
   <div class="stats" id="stats"></div>
 
   <div class="card">
-    <h2>Push targets</h2>
-    <p class="hint">
+    <h2 data-i18n="card.targets.title">Push targets</h2>
+    <p class="hint" data-i18n="card.targets.hint">
       Tick the groups that should receive Blue Protocol announcements automatically
       (checked every 5 minutes, pushed only when something is new). Saving takes effect
       immediately — same as sending <code>bp push on</code> in the group.
@@ -33,60 +33,63 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:56px">Push</th><th>Group</th><th>Group ID</th>
-          <th>Last pushed announcement</th><th class="acts">Actions</th>
+          <th style="width:56px" data-i18n="th.push">Push</th>
+          <th data-i18n="th.group">Group</th>
+          <th data-i18n="th.groupId">Group ID</th>
+          <th data-i18n="th.lastPushed">Last pushed announcement</th>
+          <th class="acts" data-i18n="th.actions">Actions</th>
         </tr></thead>
         <tbody id="groupBody"></tbody>
       </table>
     </div>
     <div class="row" style="margin-top:12px">
-      <button id="btnSaveGroups" class="primary">Save push targets</button>
-      <button id="btnPushAll">Check &amp; push now (all groups)</button>
+      <button id="btnSaveGroups" class="primary" data-i18n="btn.saveTargets">Save push targets</button>
+      <button id="btnPushAll" data-i18n="btn.pushAll">Check &amp; push now (all groups)</button>
       <span class="hint" id="saveHint"></span>
     </div>
   </div>
   <div class="grid2">
     <div class="card">
-      <h2>Push records</h2>
-      <p class="hint">The last announcement pushed to each group, used for deduplication. Reset it and the next check will push the newest announcement again.</p>
+      <h2 data-i18n="card.records.title">Push records</h2>
+      <p class="hint" data-i18n="card.records.hint">The last announcement pushed to each group, used for deduplication. Reset it and the next check will push the newest announcement again.</p>
       <div class="list" id="recordList"></div>
       <div class="row" style="margin-top:10px">
-        <button id="btnResetAll" class="danger">Clear all records</button>
+        <button id="btnResetAll" class="danger" data-i18n="btn.clearRecords">Clear all records</button>
         <span class="spacer"></span>
         <span class="hint" id="recordHint"></span>
       </div>
     </div>
     <div class="card">
-      <h2>Long-image settings</h2>
+      <h2 data-i18n="card.settings.title">Long-image settings</h2>
       <div class="field">
-        <label for="cfgShotEnabled">Render announcements as a phone-sized long image</label>
+        <label for="cfgShotEnabled" data-i18n="lbl.longImage">Render announcements as a phone-sized long image</label>
         <select id="cfgShotEnabled">
-          <option value="1">Enabled (render the announcement body)</option>
-          <option value="0">Disabled (use the dark card image)</option>
+          <option value="1" data-i18n="opt.longImageOn">Enabled (render the announcement body)</option>
+          <option value="0" data-i18n="opt.longImageOff">Disabled (use the dark card image)</option>
         </select>
       </div>
       <div class="field">
-        <label for="cfgShotHeight">Maximum height (CSS pixels, 0 = no limit)</label>
+        <label for="cfgShotHeight" data-i18n="lbl.maxHeight">Maximum height (CSS pixels, 0 = no limit)</label>
         <input type="text" id="cfgShotHeight" placeholder="5000">
       </div>
       <div class="field">
-        <label for="cfgShotQuality">JPEG quality (1-100)</label>
+        <label for="cfgShotQuality" data-i18n="lbl.quality">JPEG quality (1-100)</label>
         <input type="text" id="cfgShotQuality" placeholder="88">
       </div>
       <div class="row">
-        <button id="btnSaveConfig" class="primary">Save settings</button>
+        <button id="btnSaveConfig" class="primary" data-i18n="btn.saveSettings">Save settings</button>
         <span class="hint" id="cfgHint"></span>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <h2>Image cache</h2>
+    <h2 data-i18n="card.cache.title">Image cache</h2>
     <div class="row">
       <span class="hint" id="shotHint"></span>
       <span class="spacer"></span>
-      <button id="btnClearCache">Clear summary cache</button>
-      <button id="btnClearShots" class="danger">Clear images</button>
+      <button id="btnClearCache" data-i18n="btn.clearSummary">Clear summary cache</button>
+      <button id="btnClearShots" class="danger" data-i18n="btn.clearImages">Clear images</button>
     </div>
     <div class="gallery" id="gallery"></div>
   </div>
@@ -94,34 +97,34 @@
 
 <div class="modal-mask" id="pickMask" hidden>
   <div class="modal">
-    <h2>Select push targets</h2>
+    <h2 data-i18n="modal.pick.title">Select push targets</h2>
     <div class="row">
       <div class="field grow">
-        <label for="pickSearch">Search by group name / group ID</label>
-        <input type="text" id="pickSearch" placeholder="e.g. BlueProtocol or 339466990">
+        <label for="pickSearch" data-i18n="lbl.search">Search by group name / group ID</label>
+        <input type="text" id="pickSearch" placeholder="e.g. BlueProtocol or 339466990" data-i18n-placeholder="ph.search">
       </div>
-      <button id="btnPickRefresh">Refresh group list</button>
+      <button id="btnPickRefresh" data-i18n="btn.refreshGroups">Refresh group list</button>
     </div>
     <div class="pick-list" id="pickList"></div>
     <div class="modal-foot">
       <span class="hint" id="pickHint" style="margin-right:auto"></span>
-      <button id="btnPickApply" class="primary">Replace list with selection</button>
-      <button id="pickClose">Cancel</button>
+      <button id="btnPickApply" class="primary" data-i18n="btn.applyPick">Replace list with selection</button>
+      <button id="pickClose" data-i18n="btn.cancel">Cancel</button>
     </div>
   </div>
 </div>
 
 <div class="modal-mask" id="testMask" hidden>
   <div class="modal">
-    <h2>Test push</h2>
+    <h2 data-i18n="modal.test.title">Test push</h2>
     <p class="hint" id="testTarget"></p>
     <div class="row">
-      <label><input type="checkbox" id="testForce"> Force re-send (ignore the "already pushed" record)</label>
+      <label><input type="checkbox" id="testForce"> <span data-i18n="lbl.force">Force re-send (ignore the "already pushed" record)</span></label>
     </div>
     <div class="modal-foot">
       <span class="hint" id="testResult" style="margin-right:auto"></span>
-      <button id="btnTestRun" class="primary">Start push</button>
-      <button id="testClose">Close</button>
+      <button id="btnTestRun" class="primary" data-i18n="btn.startPush">Start push</button>
+      <button id="testClose" data-i18n="btn.close">Close</button>
     </div>
   </div>
 </div>
@@ -134,8 +137,8 @@
     <input id="modalInput" type="text" hidden
       style="width:100%;box-sizing:border-box;padding:6px 8px;margin-top:6px">
     <div class="modal-foot">
-      <button class="primary" id="modalOk">OK</button>
-      <button id="modalCancel">Cancel</button>
+      <button class="primary" id="modalOk" data-i18n="btn.ok">OK</button>
+      <button id="modalCancel" data-i18n="btn.cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -143,6 +146,7 @@
 <template id="heroArtTemplate">
   <img class="art-client-icon" src="./blueprotocol-icon.png" width="128" height="128" alt="">
 </template>
+<script src="./i18n.js"></script>
 <script src="./shell.js"></script>
 <script src="./app.js"></script>
 </body>
