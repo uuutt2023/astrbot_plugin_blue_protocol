@@ -2,7 +2,7 @@
   "metadata": {
     "display_name": "Blue Protocol: Star Resonance",
     "short_desc": "Blue Protocol: Star Resonance 公告查询与自动推送",
-    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文摘要 + 手机长图）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），带 Web 面板按群名管理推送群、手动推送与长图画廊。"
+    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文摘要 + 本地 Typst 排版的长图）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），带 Web 面板按群名管理推送群、手动推送与长图画廊。"
   },
   "config": {
     "news_groups": {
@@ -24,6 +24,22 @@
     "shot_quality": {
       "description": "长图 JPEG 质量（1-100）",
       "hint": "越低越省流量。成图超过 2.5MB 时会自动继续降质/缩放"
+    },
+    "typst_enabled": {
+      "description": "用 Typst 本地排版公告长图",
+      "hint": "开启后公告图由本地 Typst 编译器排版，不依赖浏览器组件；失败时自动回退到浏览器截图"
+    },
+    "typst_ppi": {
+      "description": "Typst 导出密度（PPI）",
+      "hint": "144 是默认值，密度越高图越清晰、体积也越大；72-300 之间"
+    },
+    "typst_timeout": {
+      "description": "Typst 排版超时（秒）",
+      "hint": "单次排版的时限，超时会终止编译进程并回退到其它渲染方式"
+    },
+    "typst_font_url": {
+      "description": "中文字体下载地址（可选）",
+      "hint": "系统里没有中文字体时会从这里下载到插件数据目录；留空使用内置的官方字体源"
     }
   },
   "views": {

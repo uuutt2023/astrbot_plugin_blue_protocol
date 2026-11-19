@@ -219,7 +219,7 @@ def run(coro):
 
 NEWS_ITEM = {
     "news_id": "18951093",
-    "tag": "Notice",
+    "tag": "公告",
     "title": "11月12日例行维护公告",
     "time": "2026-11-12 11:02:25",
     "desc": "11月12日例行维护公告",
@@ -595,10 +595,109 @@ def test_norm_umo_rewrites_adapter_type_to_instance_id():
     assert plugin._norm_umo("1001") == "napcat:GroupMessage:1001"
 
 
+def test_news_image_prefers_typst_then_falls_back():
+    """渲染顺序：Typst 长图 → 浏览器长图 → Typst 卡片 → html_render 卡片。"""
+    plugin, _, _ = make_plugin(typst_enabled=True)
+    order = []
+
+    async def fake_typst_long(detail, data_dir, **kw):
+        order.append("typst-long")
+        return "/tmp/typst-long.jpg", False
+
+    async def fake_shot(html, key, **kw):
+        order.append("shot")
+        return "/tmp/shot.jpg", False
+
+    async def fake_typst_card(it, summary, data_dir, **kw):
+        order.append("typst-card")
+        return "/tmp/typst-card.jpg"
+
+    async def fake_t2i(it, summary):
+        order.append("t2i")
+        return "https://example.com/card.jpg"
+
+    bp_main.typst_render.render_long_image = fake_typst_long
+    bp_main.typst_render.render_card = fake_typst_card
+    bp_main.screenshot.shot_article = fake_shot
+    plugin._render_card = fake_t2i
+
+    path, note = run(plugin._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert order == ["typst-long"], order
+    assert path == "/tmp/typst-long.jpg"
+
+    # Typst 挂掉 → 走浏览器截图
+    order.clear()
+
+    async def boom(*a, **k):
+        raise RuntimeError("typst down")
+
+    bp_main.typst_render.render_long_image = boom
+    path, note = run(plugin._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert order == ["shot"], order
+    assert path == "/tmp/shot.jpg"
+
+    # 浏览器也挂 → 走 Typst 卡片
+    order.clear()
+
+    async def boom_shot(*a, **k):
+        raise RuntimeError("no browser")
+
+    bp_main.screenshot.shot_article = boom_shot
+    path, note = run(plugin._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert order == ["typst-card"], order
+    assert path == "/tmp/typst-card.jpg"
+
+    # 全挂 → html_render 卡片
+    order.clear()
+    bp_main.typst_render.render_card = boom
+    path, note = run(plugin._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert order == ["t2i"], order
+    assert path == "https://example.com/card.jpg"
+
+    # Typst 关掉 → 不走 Typst
+    order.clear()
+    plugin2, _, _ = make_plugin(typst_enabled=False)
+    plugin2._render_card = fake_t2i
+    bp_main.screenshot.shot_article = fake_shot
+    run(plugin2._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert order == ["shot"], order
+
+
+def test_news_image_returns_none_when_all_fail():
+    """所有渲染都失败时返回 None，让上层降级成纯文字。"""
+    plugin, _, _ = make_plugin(typst_enabled=True)
+
+    async def boom(*a, **k):
+        raise RuntimeError("nope")
+
+    async def boom2(*a, **k):
+        raise RuntimeError("nope")
+
+    bp_main.typst_render.render_long_image = boom
+    bp_main.screenshot.shot_article = boom2
+    bp_main.typst_render.render_card = boom2
+
+    async def boom_card(*a, **k):
+        raise RuntimeError("nope")
+
+    plugin._render_card = boom_card
+    path, note = run(plugin._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert path is None
+
+
+def test_typst_options_read_config():
+    plugin, _, _ = make_plugin(typst_enabled=True, typst_ppi=180, typst_timeout=90)
+    opts = plugin._typst_options()
+    assert opts["ppi"] == 180 and opts["timeout"] == 90
+    default, _, _ = make_plugin(typst_enabled=True)
+    default = default._typst_options()
+    assert default["ppi"] == 144 and default["timeout"] == 60
+
+
 def test_news_text_contains_tag_and_link():
     plugin, _, _ = make_plugin()
     text = plugin._news_text(NEWS_ITEM, "摘要内容")
-    assert "Notice" in text
+    assert "公告" in text
     assert NEWS_ITEM["title"] in text
     assert NEWS_ITEM["url"] in text
     assert "摘要内容" in text

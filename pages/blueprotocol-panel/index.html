@@ -62,6 +62,14 @@
     <div class="card">
       <h2 data-i18n="card.settings.title">Long-image settings</h2>
       <div class="field">
+        <label for="cfgTypstEnabled" data-i18n="lbl.typstEnabled">Typeset with local Typst</label>
+        <select id="cfgTypstEnabled">
+          <option value="1" data-i18n="opt.typstOn">Enabled (local Typst compiler)</option>
+          <option value="0" data-i18n="opt.typstOff">Disabled (browser screenshots)</option>
+        </select>
+        <span class="hint" id="cfgTypstStatus"></span>
+      </div>
+      <div class="field">
         <label for="cfgShotEnabled" data-i18n="lbl.longImage">Render announcements as a phone-sized long image</label>
         <select id="cfgShotEnabled">
           <option value="1" data-i18n="opt.longImageOn">Enabled (render the announcement body)</option>

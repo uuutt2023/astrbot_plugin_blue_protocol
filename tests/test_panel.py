@@ -201,6 +201,9 @@ def test_meta_reads_config():
         "shot_enabled": False,
         "shot_max_height": 12000,
         "shot_quality": 70,
+        "typst_enabled": True,
+        "typst_ppi": 144,
+        "typst_timeout": 60,
     }
     assert data["limits"]["max_push_groups"] == page_mod.MAX_PUSH_GROUPS
     assert data["defaults"]["shot_quality"] == 88
@@ -420,9 +423,57 @@ def test_save_config_validation_and_ok():
         )
     )
     ok, data, msg = unwrap(run(ctrl.save_config()))
-    assert ok and data == {"shot_enabled": False, "shot_max_height": 8000, "shot_quality": 60}
+    assert ok and data == {
+        "shot_enabled": False,
+        "shot_max_height": 8000,
+        "shot_quality": 60,
+        "typst_enabled": True,
+        "typst_ppi": 144,
+        "typst_timeout": 60,
+    }
     assert plugin.config["shot_max_height"] == 8000 and plugin.config.save_count == 1
     assert "saved" in msg.lower()
+
+
+def test_save_config_typst_options():
+    """Typst 开关 / 密度 / 超时也能从面板保存，并做范围校验。"""
+    plugin, ctrl, _ = make_case()
+    with_request(
+        FakeRequest(
+            body={
+                "shot_enabled": True,
+                "shot_max_height": 5000,
+                "shot_quality": 88,
+                "typst_enabled": False,
+                "typst_ppi": 180,
+                "typst_timeout": 90,
+            },
+            method="POST",
+        )
+    )
+    ok, data, _ = unwrap(run(ctrl.save_config()))
+    assert ok
+    assert data["typst_enabled"] is False
+    assert data["typst_ppi"] == 180 and data["typst_timeout"] == 90
+    assert plugin.config["typst_enabled"] is False
+
+    with_request(FakeRequest(body={"typst_ppi": 9999}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "72-300" in msg
+    with_request(FakeRequest(body={"typst_timeout": 0}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "5-600" in msg
+
+
+def test_meta_reports_typst_status():
+    """meta 要带上 Typst 可用状态，面板才能提示字体来源。"""
+    plugin, ctrl, _ = make_case()
+    with_request(FakeRequest())
+    ok, data, _ = unwrap(run(ctrl.get_meta()))
+    assert ok
+    assert "typst" in data
+    assert isinstance(data["typst"]["available"], bool)
+    assert data["typst"]["font_source"] in ("managed", "system", "none")
 
 
 def test_normalize_umos():

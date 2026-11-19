@@ -27,6 +27,7 @@ from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 from bpnews import api, screenshot
+from bpnews.typst import render as typst_render
 from bpnews.api import TAG_ALL, resolve_tag, tag_display_name
 from bpnews.groups import (
     SOURCE_API,
@@ -711,17 +712,52 @@ class BlueProtocolNewsPlugin(Star):
         clear_pushed(key)
         yield event.plain_result("本群的公告推送记录已清空。")
 
-    # ---------------- 公告长图（自渲染正文，失败回退卡片） ----------------
+    # ---------------- 公告长图（Typst 本地排版优先，失败逐级回退） ----------------
+
+    def _typst_options(self) -> dict:
+        """Typst 排版相关配置。"""
+        return {
+            "ppi": int(self.config.get("typst_ppi", typst_render.DEFAULT_PPI) or 144),
+            "timeout": float(
+                self.config.get("typst_timeout", typst_render.DEFAULT_TIMEOUT) or 60
+            ),
+            "font_url": str(self.config.get("typst_font_url", "") or "") or None,
+        }
 
     async def _news_image(
         self, it: dict, detail: dict, summary: str
     ) -> tuple[str | None, str]:
         """返回 (图片路径/URL, 追加到文字消息的提示)。
 
-        首选「按手机视口渲染公告正文」的整页长图；Playwright 不可用或渲染失败时
-        回退到 templates/card.html 的卡片图。
+        渲染顺序：
+          ① Typst 本地排版的长图（首选，不依赖浏览器组件）；
+          ② Playwright 整页截图长图（Typst 不可用时的兜底）；
+          ③ Typst 排版的卡片；
+          ④ html_render 卡片（最后兜底）。
         """
         note = ""
+        use_typst = bool(self.config.get("typst_enabled", True))
+        options = self._typst_options()
+
+        if use_typst:
+            try:
+                path, truncated = await typst_render.render_long_image(
+                    detail or it,
+                    self.data_dir,
+                    ppi=options["ppi"],
+                    timeout=options["timeout"],
+                    max_height=int(
+                        self.config.get("shot_max_height", screenshot.MAX_HEIGHT)
+                    ),
+                    quality=int(self.config.get("shot_quality", screenshot.JPEG_QUALITY)),
+                    font_url=options["font_url"],
+                )
+                if truncated:
+                    note = "\n\n（这条公告比较长，图片只显示前半部分，完整内容请点链接查看。）"
+                return str(path), note
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Typst 长图排版失败，回退到浏览器渲染：%s", e)
+
         if self.config.get("shot_enabled", True):
             try:
                 html = render_article(detail or it)
@@ -745,6 +781,22 @@ class BlueProtocolNewsPlugin(Star):
                     logger.warning("announcement long image render failed: %s", e)
             except Exception as e:  # noqa: BLE001
                 logger.warning("announcement long image render failed: %s", e)
+
+        if use_typst:
+            try:
+                path = await typst_render.render_card(
+                    it,
+                    summary,
+                    self.data_dir,
+                    ppi=options["ppi"],
+                    timeout=options["timeout"],
+                    quality=int(self.config.get("shot_quality", screenshot.JPEG_QUALITY)),
+                    font_url=options["font_url"],
+                )
+                return str(path), note
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Typst 卡片排版失败，回退到 html_render：%s", e)
+
         try:
             return await self._render_card(it, summary), note
         except Exception as e:  # noqa: BLE001

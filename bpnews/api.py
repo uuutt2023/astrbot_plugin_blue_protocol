@@ -41,6 +41,15 @@ TAG_NAMES: dict[str, str] = {
     "136247": "Event",
     "136244": "General",
 }
+# 展示用中文分类名（官网就叫最新 / 公告 / 新闻 / 活动 / 综合）。
+# 指令参数仍然是英文（``bp list notice``），那是 NAME_TO_TAG 管的。
+TAG_NAMES_ZH: dict[str, str] = {
+    "136243": "最新",
+    "136246": "公告",
+    "136245": "新闻",
+    "136247": "活动",
+    "136244": "综合",
+}
 # 英文分类名 → 标签 id（给指令用）。别名多写几个，手滑也认得出来。
 NAME_TO_TAG: dict[str, str] = {
     "all": TAG_ALL,
@@ -171,8 +180,8 @@ def resolve_tag(name: str) -> str:
 
 
 def tag_display_name(tag_id: str) -> str:
-    """标签 id → 英文展示名（Latest / Notice / News / Event / General）。"""
-    return TAG_NAMES.get(str(tag_id or "").strip(), "")
+    """标签 id → 中文展示名（最新 / 公告 / 新闻 / 活动 / 综合）。"""
+    return TAG_NAMES_ZH.get(str(tag_id or "").strip(), "")
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +214,7 @@ def tag_label(tag_ids: str) -> str:
         key = raw.strip()
         if not key:
             continue
-        name = TAG_NAMES.get(key, "")
+        name = TAG_NAMES_ZH.get(key, "")
         if name and name not in names:
             names.append(name)
     return "/".join(names)

@@ -11,6 +11,30 @@
     "type": "int",
     "default": 10
   },
+  "typst_enabled": {
+    "description": "i18n:config.typst_enabled.description",
+    "hint": "i18n:config.typst_enabled.hint",
+    "type": "bool",
+    "default": true
+  },
+  "typst_ppi": {
+    "description": "i18n:config.typst_ppi.description",
+    "hint": "i18n:config.typst_ppi.hint",
+    "type": "int",
+    "default": 144
+  },
+  "typst_timeout": {
+    "description": "i18n:config.typst_timeout.description",
+    "hint": "i18n:config.typst_timeout.hint",
+    "type": "int",
+    "default": 60
+  },
+  "typst_font_url": {
+    "description": "i18n:config.typst_font_url.description",
+    "hint": "i18n:config.typst_font_url.hint",
+    "type": "string",
+    "default": ""
+  },
   "shot_enabled": {
     "description": "i18n:config.shot_enabled.description",
     "hint": "i18n:config.shot_enabled.hint",

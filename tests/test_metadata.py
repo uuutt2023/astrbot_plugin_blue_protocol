@@ -157,6 +157,16 @@ def test_plugin_files_present():
         os.path.join("pages", "blueprotocol-panel", "app.js"),
         os.path.join("pages", "blueprotocol-panel", "style.css"),
         os.path.join("pages", "blueprotocol-panel", "blueprotocol-icon.png"),
+        os.path.join("bpnews", "typst", "__init__.py"),
+        os.path.join("bpnews", "typst", "render.py"),
+        os.path.join("bpnews", "typst", "worker.py"),
+        os.path.join("bpnews", "typst", "fonts.py"),
+        os.path.join("bpnews", "typst", "assets.py"),
+        os.path.join("bpnews", "typst", "html2typst.py"),
+        os.path.join("templates", "typst", "common.typ"),
+        os.path.join("templates", "typst", "long_image.typ"),
+        os.path.join("templates", "typst", "card.typ"),
+        os.path.join("tools", "make_previews.py"),
     ]
     missing = [p for p in required if not os.path.isfile(os.path.join(_ROOT, p))]
     assert not missing, f"缺少文件：{missing}"
@@ -164,7 +174,7 @@ def test_plugin_files_present():
 
 def test_requirements_cover_imports():
     req = _read("requirements.txt").lower()
-    for pkg in ("httpx", "playwright", "pillow"):
+    for pkg in ("httpx", "playwright", "pillow", "typst"):
         assert pkg in req, f"requirements.txt 缺 {pkg}"
 
 

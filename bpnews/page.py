@@ -78,6 +78,19 @@ MAX_PUSH_GROUPS = 200
 CHECK_THROTTLE = 300
 
 
+def _typst_status(data_dir: Path | None) -> dict:
+    """Typst 排版可用状态；取不到就报不可用，不影响其它接口。"""
+    if data_dir is None:
+        return {"available": False, "font_source": "none", "managed_fonts": 0, "system_cjk": False}
+    try:
+        from bpnews.typst import render as typst_render
+
+        return typst_render.status(data_dir)
+    except Exception as exc:  # noqa: BLE001
+        _log_warn(f"读取 Typst 状态失败: {exc}")
+        return {"available": False, "font_source": "none", "managed_fonts": 0, "system_cjk": False}
+
+
 def _log_warn(message: str) -> None:
     try:
         from astrbot.api import logger
@@ -311,7 +324,11 @@ class NewsPageController:
                     "shot_enabled": bool(self._cfg("shot_enabled", True)),
                     "shot_max_height": self._int_cfg("shot_max_height", 5000),
                     "shot_quality": self._int_cfg("shot_quality", 88),
+                    "typst_enabled": bool(self._cfg("typst_enabled", True)),
+                    "typst_ppi": self._int_cfg("typst_ppi", 144),
+                    "typst_timeout": self._int_cfg("typst_timeout", 60),
                 },
+                "typst": _typst_status(self.data_dir),
                 "defaults": {"shot_max_height": 5000, "shot_quality": 88},
                 "data_dir": str(self.data_dir) if self.data_dir else "",
             }
@@ -606,12 +623,29 @@ class NewsPageController:
         if not 1 <= quality <= 100:
             return self._err("JPEG 质量需在 1-100 之间")
 
+        raw_ppi = payload.get("typst_ppi", self._cfg("typst_ppi", 144))
+        raw_timeout = payload.get("typst_timeout", self._cfg("typst_timeout", 60))
+        try:
+            typst_ppi = int(raw_ppi if raw_ppi not in (None, "") else 144)
+            typst_timeout = int(raw_timeout if raw_timeout not in (None, "") else 60)
+        except (TypeError, ValueError):
+            return self._err("Typst 参数需要是整数")
+        if not 72 <= typst_ppi <= 300:
+            return self._err("Typst 导出密度需在 72-300 PPI 之间")
+        if not 5 <= typst_timeout <= 600:
+            return self._err("Typst 超时需在 5-600 秒之间")
+
         try:
             config["shot_enabled"] = bool(
                 payload.get("shot_enabled", self._cfg("shot_enabled", True))
             )
             config["shot_max_height"] = max_height
             config["shot_quality"] = quality
+            config["typst_enabled"] = bool(
+                payload.get("typst_enabled", self._cfg("typst_enabled", True))
+            )
+            config["typst_ppi"] = typst_ppi
+            config["typst_timeout"] = typst_timeout
         except Exception as exc:
             return self._err(f"写入配置失败：{exc}", status_code=500)
         saver = getattr(self.plugin, "save_config_now", None)
@@ -626,6 +660,9 @@ class NewsPageController:
                 "shot_enabled": bool(config.get("shot_enabled", True)),
                 "shot_max_height": max_height,
                 "shot_quality": quality,
+                "typst_enabled": bool(config.get("typst_enabled", True)),
+                "typst_ppi": typst_ppi,
+                "typst_timeout": typst_timeout,
             },
             "Long-image settings saved",
         )

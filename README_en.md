@@ -15,6 +15,15 @@ Data comes from the Tencent game announcement API behind the official site (`app
 
 # English
 
+## Typesetting with Typst
+
+Announcement images are typeset **locally with [Typst](https://typst.app/)** — no browser component needed:
+
+- The long image and the card are compiled by the `typst` Python package inside an **isolated subprocess** with a timeout and a hard kill, so a weird announcement can never wedge the plugin.
+- The announcement HTML is turned into a tiny JSON contract (`runs` / `br`); the templates live in `templates/typst/*.typ` and are compiled against `data.json`.
+- The CJK font is resolved from the plugin data directory first, then from system fonts, and finally downloaded once on first use. The resolved family name is passed to the template, so no “unknown font family” warnings.
+- Typst is the **primary** renderer. If it is missing or fails, the plugin falls back to the Playwright long image, then to the Typst card, and finally to the `html_render` card — images keep working either way.
+
 ## Announcement long image
 
 The announcement body is returned as HTML by the API, so the plugin renders it through its own template and takes a full-page screenshot at a 390×844 phone viewport — the content is complete, and it does not depend on the official site's JavaScript-rendered SPA.
@@ -98,6 +107,10 @@ The announcement titles and bodies themselves stay in the game's original Chines
 | `shot_enabled` | `true` | Render announcements as a phone-sized long image; when off it falls back to the dark card image |
 | `shot_max_height` | `5000` | Maximum long-image height in CSS pixels (0 = no limit). Very long announcements are cut here and the text message points to the link |
 | `shot_quality` | `88` | Long-image JPEG quality. Images above 2.5 MB are downscaled automatically |
+| `typst_enabled` | `true` | Typeset announcement images with the local Typst compiler (primary renderer); when off the plugin uses browser screenshots |
+| `typst_ppi` | `144` | Typst export density in PPI (72-300). Higher means sharper and larger |
+| `typst_timeout` | `60` | Time limit for one Typst run in seconds (5-600). On timeout the compile process is killed |
+| `typst_font_url` | `""` | Optional CJK font download URL, used when the system has no Chinese font |
 
 ## Web panel (the recommended way to manage push targets)
 
@@ -145,6 +158,7 @@ python tests/test_panel.py             # panel backend routes (astrbot is stubbe
 python tests/test_blueprotocol_main.py # main.py wiring and push flow
 python tests/test_metadata.py          # packaging contract (metadata / conf schema / i18n)
 python tests/test_panel_layout_ui.py   # panel UI in a real browser (needs Playwright)
+python tests/test_typst_render.py      # local Typst typesetting (needs the typst package)
 python tools/make_logo.py              # regenerate logo.png / the panel icon
 ```
 

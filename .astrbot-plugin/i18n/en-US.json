@@ -2,7 +2,7 @@
   "metadata": {
     "display_name": "Blue Protocol: Star Resonance",
     "short_desc": "Blue Protocol: Star Resonance announcement bot",
-    "desc": "Blue Protocol: Star Resonance (蓝色协议：星痕共鸣) official announcement bot — announcement list with paging and categories, latest announcement with summary and a phone-sized long image, per-group dedup, and scheduled auto-push (checked every 5 minutes). Includes a web panel to manage push targets by group name, trigger a push manually and browse the image gallery."
+    "desc": "Blue Protocol: Star Resonance (蓝色协议：星痕共鸣) official announcement bot — announcement list with paging and categories, latest announcement (summary + long image typeset locally with Typst), per-group dedup, and scheduled auto-push (checked every 5 minutes). Includes a web panel to manage push targets by group name, trigger a push manually and browse the image gallery."
   },
   "config": {
     "news_groups": {
@@ -24,6 +24,22 @@
     "shot_quality": {
       "description": "Long-image JPEG quality (1-100)",
       "hint": "Lower saves bandwidth. Images above 2.5MB are downscaled automatically."
+    },
+    "typst_enabled": {
+      "description": "Typeset announcement images with local Typst",
+      "hint": "Renders the announcement image with the local Typst compiler — no browser component needed. Falls back to browser screenshots if it fails."
+    },
+    "typst_ppi": {
+      "description": "Typst export density (PPI)",
+      "hint": "144 is the default. Higher density means sharper but larger images; allowed range 72-300."
+    },
+    "typst_timeout": {
+      "description": "Typst typesetting timeout (seconds)",
+      "hint": "Time limit for one typeset run. On timeout the compile process is killed and another renderer takes over."
+    },
+    "typst_font_url": {
+      "description": "CJK font download URL (optional)",
+      "hint": "Used when the system has no CJK font; the file is cached in the plugin data directory. Leave empty to use the built-in official source."
     }
   },
   "views": {

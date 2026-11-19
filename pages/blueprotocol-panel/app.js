@@ -244,6 +244,20 @@
     byId("cfgShotEnabled").value = cfg.shot_enabled === false ? "0" : "1";
     byId("cfgShotHeight").value = cfg.shot_max_height == null ? "5000" : cfg.shot_max_height;
     byId("cfgShotQuality").value = cfg.shot_quality == null ? "88" : cfg.shot_quality;
+    byId("cfgTypstEnabled").value = cfg.typst_enabled === false ? "0" : "1";
+    renderTypstStatus();
+  }
+
+  function renderTypstStatus() {
+    var st = (state.meta || {}).typst || {};
+    var node = byId("cfgTypstStatus");
+    if (!node) return;
+    if (!st.available) {
+      node.textContent = t('typst.unavailable');
+      return;
+    }
+    var fontKey = 'typst.font.' + (st.font_source || 'none');
+    node.textContent = t('typst.status', { font: t(fontKey) });
   }
 
   /* ---------- 数据加载 ---------- */
@@ -400,7 +414,8 @@
     apiPost("page/config/save", {
       shot_enabled: byId("cfgShotEnabled").value === "1",
       shot_max_height: byId("cfgShotHeight").value.trim(),
-      shot_quality: byId("cfgShotQuality").value.trim()
+      shot_quality: byId("cfgShotQuality").value.trim(),
+      typst_enabled: byId("cfgTypstEnabled").value === "1"
     }).then(function () {
       byId("cfgHint").textContent = "";
       return loadMeta().then(function () { toast(t('toast.settingsSaved')); });
@@ -575,6 +590,7 @@
     renderGroups();
     renderRecords();
     renderShots();
+    renderTypstStatus();   // 只刷新文案，不动用户还没保存的输入框
     if (state.pickLoaded) renderPickList();
   }
   if (window.PanelI18n && window.PanelI18n.onChange) window.PanelI18n.onChange(rerender);

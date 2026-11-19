@@ -97,8 +97,8 @@ def test_normalize_cover():
 
 
 def test_tag_label():
-    assert api.tag_label("136246") == "Notice"
-    assert api.tag_label("136245,136244") == "News/General"
+    assert api.tag_label("136246") == "公告"
+    assert api.tag_label("136245,136244") == "新闻/综合"
     assert api.tag_label("") == ""
     assert api.tag_label("999999") == ""
 
@@ -109,12 +109,12 @@ def test_parse_list_item():
     assert it["news_id"] == "18951093"
     assert it["title"] == "11月12日例行维护公告"
     assert it["time"] == "2026-11-12 11:02:25"
-    assert it["tag"] == "Notice"
+    assert it["tag"] == "公告"
     assert it["cover"].startswith("https://")
     assert it["url"] == "https://gm.qq.com/web202503/news-detail.html?newsid=18951093"
     # 第二条：多标签 + 空封面
     it2 = api.parse_list_item(msg["result"][1])
-    assert it2["tag"] == "News/General"
+    assert it2["tag"] == "新闻/综合"
     assert it2["cover"] == ""
 
 
@@ -129,7 +129,7 @@ def test_parse_detail():
     d = api.parse_detail(msg)
     assert d["news_id"] == "18951093"
     assert d["title"] == "11月12日例行维护公告"
-    assert d["tag"] == "Notice"
+    assert d["tag"] == "公告"
     assert "停服180分钟" in d["content"]
     assert d["url"].endswith("newsid=18951093")
 
@@ -209,9 +209,22 @@ def test_resolve_tag_and_display_name():
     assert api.resolve_tag("latest") == api.TAG_ALL
     assert api.resolve_tag("公告") == ""            # 认不出来的返回空串
     assert api.resolve_tag("") == ""
-    assert api.tag_display_name("136246") == "Notice"
-    assert api.tag_display_name("136247") == "Event"
+    assert api.tag_display_name("136246") == "公告"
+    assert api.tag_display_name("136247") == "活动"
     assert api.tag_display_name("999999") == ""
+
+
+def test_tag_display_is_chinese_but_command_alias_is_english():
+    """指令参数认英文，展示名用中文（公告正文和聊天回复都是中文的）。"""
+    assert api.resolve_tag("notice") == "136246"
+    assert api.resolve_tag("announcement") == "136246"
+    assert api.tag_display_name("136246") == "公告"
+    assert api.tag_display_name("136243") == "最新"
+    assert api.tag_display_name("136245") == "新闻"
+    assert api.tag_display_name("136247") == "活动"
+    assert api.tag_display_name("136244") == "综合"
+    # 英文名仍然保留，兼容旧逻辑
+    assert api.TAG_NAMES["136246"] == "Notice"
 
 
 def test_build_list_url_tag():

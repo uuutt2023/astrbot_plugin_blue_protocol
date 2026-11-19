@@ -29,6 +29,57 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+class TypstSurfaceTests(unittest.TestCase):
+    """Typst 排版相关的配置与文案必须双语齐备。"""
+
+    CONFIG_KEYS = ("typst_enabled", "typst_ppi", "typst_timeout", "typst_font_url")
+
+    def test_conf_schema_has_typst_keys(self):
+        schema = json.loads(_read(ROOT / "_conf_schema.json"))
+        for key in self.CONFIG_KEYS:
+            self.assertIn(key, schema, key)
+            self.assertTrue(schema[key]["description"].startswith("i18n:config."), key)
+
+    def test_locale_files_cover_typst_keys(self):
+        for loc in ("zh-CN", "en-US"):
+            data = json.loads(_read(ROOT / ".astrbot-plugin" / "i18n" / f"{loc}.json"))
+            for key in self.CONFIG_KEYS:
+                self.assertIn(key, data["config"], f"{loc}/{key}")
+                for field in ("description", "hint"):
+                    self.assertTrue(data["config"][key].get(field), f"{loc}/{key}/{field}")
+            # 中文必须是中文
+            if loc == "zh-CN":
+                self.assertTrue(CJK(data["config"]["typst_enabled"]["description"]))
+
+    def test_panel_has_typst_toggle_and_status(self):
+        html = _read(PANEL / "index.html")
+        self.assertIn('id="cfgTypstEnabled"', html)
+        self.assertIn('data-i18n="lbl.typstEnabled"', html)
+        self.assertIn('id="cfgTypstStatus"', html)
+        js = _read(PANEL / "app.js")
+        self.assertIn("cfgTypstEnabled", js)
+        self.assertIn("typst_enabled", js)
+        self.assertIn("renderTypstStatus", js)
+
+    def test_panel_i18n_has_typst_keys(self):
+        i18n = _read(PANEL / "i18n.js")
+        for key in (
+            "lbl.typstEnabled",
+            "opt.typstOn",
+            "opt.typstOff",
+            "typst.unavailable",
+            "typst.status",
+            "typst.font.managed",
+            "typst.font.system",
+            "typst.font.none",
+        ):
+            self.assertIn(key, i18n, key)
+
+    def test_requirements_declares_typst(self):
+        req = _read(ROOT / "requirements.txt")
+        self.assertIn("typst", req)
+
+
 class ChatReplyLanguageTests(unittest.TestCase):
     """main.py 里 plain_result 的文案必须是中文。"""
 

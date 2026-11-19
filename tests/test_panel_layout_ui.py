@@ -12,7 +12,10 @@ window.AstrBotPluginPage = {
  apiGet: async path => ({status:'ok',data:{
   session_ok:true,monitor_running:true,monitors:12,max_monitors:50,
   check_interval:60,dynamic_check_interval:180,groups:[],rows:[],records:[],shots:[],
-  live:{rows:[]},dynamic:{rows:[]},config:{shot_enabled:true,shot_quality:85,shot_max_height:8000},
+  live:{rows:[]},dynamic:{rows:[]},
+  config:{shot_enabled:true,shot_quality:85,shot_max_height:8000,
+   typst_enabled:true,typst_ppi:144,typst_timeout:60},
+  typst:{available:true,font_source:'system',managed_fonts:0,system_cjk:true},
   match_types:[{value:'exact',label:'精确'}],formats:[{value:'text',label:'文本'}],
   rules:[],scopes:[{value:'global',label:'全局'}],stats:{total:12,enabled:10,hits:12345},enabled:true
  }}),
@@ -137,6 +140,22 @@ class PanelLayoutTests(unittest.TestCase):
   p.locator('#panelLang').click()
   expect(p.locator('html')).to_have_attribute('lang','en')
   expect(p.locator('#panelLang')).to_have_text('中文')
+
+ def test_typst_toggle_and_status(self):
+  """图片设置里有 Typst 开关，并显示当前中文字体来源。"""
+  p=self.page
+  p.locator('.nav-item').nth(3).click()
+  expect(p.locator('#cfgTypstEnabled')).to_be_visible()
+  expect(p.locator('#cfgTypstEnabled')).to_have_value('1')
+  expect(p.locator('#cfgTypstStatus')).to_contain_text('Typst is ready')
+  # 切到中文后同一处也要是中文
+  p.locator('#panelLang').click()
+  expect(p.locator('#cfgTypstStatus')).to_contain_text('Typst 已就绪')
+  expect(p.locator('#cfgTypstStatus')).to_contain_text('系统字体')
+  # 保存时要把 typst_enabled 一起发出去
+  p.locator('#cfgTypstEnabled').select_option('0')
+  p.locator('#btnSaveConfig').click()
+  self.assertEqual(p.evaluate('window.lastPost.body.typst_enabled'),False)
 
  def test_language_select_in_appearance(self):
   """「界面外观」里的 Language 下拉同样能切语言。"""

@@ -1,3 +1,4 @@
 httpx
+typst>=0.13
 playwright>=1.40
 Pillow

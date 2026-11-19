@@ -15,6 +15,15 @@ Data comes from the Tencent game announcement API behind the official site (`app
 
 # English
 
+## Typesetting with Typst
+
+Announcement images are typeset **locally with [Typst](https://typst.app/)** — no browser component needed:
+
+- The long image and the card are compiled by the `typst` Python package inside an **isolated subprocess** with a timeout and a hard kill, so a weird announcement can never wedge the plugin.
+- The announcement HTML is turned into a tiny JSON contract (`runs` / `br`); the templates live in `templates/typst/*.typ` and are compiled against `data.json`.
+- The CJK font is resolved from the plugin data directory first, then from system fonts, and finally downloaded once on first use. The resolved family name is passed to the template, so no “unknown font family” warnings.
+- Typst is the **primary** renderer. If it is missing or fails, the plugin falls back to the Playwright long image, then to the Typst card, and finally to the `html_render` card — images keep working either way.
+
 ## Announcement long image
 
 The announcement body is returned as HTML by the API, so the plugin renders it through its own template and takes a full-page screenshot at a 390×844 phone viewport — the content is complete, and it does not depend on the official site's JavaScript-rendered SPA.
@@ -98,6 +107,10 @@ The announcement titles and bodies themselves stay in the game's original Chines
 | `shot_enabled` | `true` | Render announcements as a phone-sized long image; when off it falls back to the dark card image |
 | `shot_max_height` | `5000` | Maximum long-image height in CSS pixels (0 = no limit). Very long announcements are cut here and the text message points to the link |
 | `shot_quality` | `88` | Long-image JPEG quality. Images above 2.5 MB are downscaled automatically |
+| `typst_enabled` | `true` | Typeset announcement images with the local Typst compiler (primary renderer); when off the plugin uses browser screenshots |
+| `typst_ppi` | `144` | Typst export density in PPI (72-300). Higher means sharper and larger |
+| `typst_timeout` | `60` | Time limit for one Typst run in seconds (5-600). On timeout the compile process is killed |
+| `typst_font_url` | `""` | Optional CJK font download URL, used when the system has no Chinese font |
 
 ## Web panel (the recommended way to manage push targets)
 
@@ -145,12 +158,22 @@ python tests/test_panel.py             # panel backend routes (astrbot is stubbe
 python tests/test_blueprotocol_main.py # main.py wiring and push flow
 python tests/test_metadata.py          # packaging contract (metadata / conf schema / i18n)
 python tests/test_panel_layout_ui.py   # panel UI in a real browser (needs Playwright)
+python tests/test_typst_render.py      # local Typst typesetting (needs the typst package)
 python tools/make_logo.py              # regenerate logo.png / the panel icon
 ```
 
 ---
 
 # 中文
+
+## 用 Typst 本地排版
+
+公告图现在由 **[Typst](https://typst.app/) 在本地排版**，不再依赖浏览器组件：
+
+- 长图和卡片都由 `typst` 这个 Python 包在**独立子进程**里编译，带超时和强制结束，异常公告不会把插件卡住。
+- 正文 HTML 先转成一份很小的 JSON 契约（`runs` / `br`），模板放在 `templates/typst/*.typ`，编译时读 `data.json`。
+- 中文字体按「插件数据目录 → 系统字体 → 首次使用时自动下载」的顺序解析；解析出的字体名会写进数据里传给模板，不会再出现“unknown font family”警告。
+- Typst 是**首选**渲染方式；装不上或出错时会依次回退到浏览器长图 → Typst 卡片 → `html_render` 卡片，图片照样能出。
 
 ## 公告长图
 
@@ -212,6 +235,10 @@ python tools/make_logo.py              # regenerate logo.png / the panel icon
 | `shot_enabled` | `true` | 公告图用手机整页长图；关掉则回到深色卡片图 |
 | `shot_max_height` | `5000` | 长图最大高度（CSS 像素，0 = 不截断）。超长公告截取前面部分，文字消息里提示看链接 |
 | `shot_quality` | `88` | 长图 JPEG 质量。成图超过 2.5MB 会自动继续降质/缩放 |
+| `typst_enabled` | `true` | 用本地 Typst 编译器排版公告图（首选渲染方式）；关掉则改用浏览器截图 |
+| `typst_ppi` | `144` | Typst 导出密度（PPI，72-300）。越高越清晰，体积也越大 |
+| `typst_timeout` | `60` | 单次 Typst 排版的超时秒数（5-600）。超时会终止编译进程 |
+| `typst_font_url` | `""` | 中文字体下载地址（可选），系统没有中文字体时才会用到 |
 
 ## Web 面板用法
 
@@ -220,7 +247,7 @@ AstrBot WebUI → 插件 → Blue Protocol: Star Resonance → 打开面板（�
 - **推送群**：按**群名**勾选要推送的群，不用记群号；`选择群…` 里可以搜索群名或群号，还能「刷新群列表」把机器人所在的全部群一次拉出来。
 - **立刻检查并推送**：不用等 5 分钟轮询周期；单群「测试推送」还能强制重发，用来验证群里到底收不收得到。
 - **推送记录**：每个群上次推的公告标题，支持单群/全部重置。
-- **截图缓存**：公告长图缩略图 + 占用空间，一键清空；长图参数（开关/最大高度/质量）也能在面板里改。
+- **截图缓存**：公告长图缩略图 + 占用空间，一键清空；长图参数（开关/最大高度/质量）和 Typst 开关也能在面板里改，面板还会显示当前用的是哪套中文字体。
 
 > 群名单里填**裸群号**时，插件会把它补成「平台**实例 id** + GroupMessage + 群号」（例如 `napcat:GroupMessage:123`）。要填实例 id 而不是适配器类型名：AstrBot 的 `send_message` 按实例 id 匹配平台，写 `aiocqhttp:GroupMessage:123` 这种发不出去。
 

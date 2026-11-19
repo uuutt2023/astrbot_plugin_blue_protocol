@@ -9,6 +9,7 @@ push_record.json
 summary_cache.json
 groups.json
 news_shots/
+/typst/
 *.log
 
 .idea/
