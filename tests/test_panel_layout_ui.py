@@ -166,4 +166,22 @@ class PanelLayoutTests(unittest.TestCase):
   expect(stat).to_have_text('Push targets')
   p.locator('#panelLang').click()
   expect(stat).to_have_text('推送群')
+ def test_page_title_follows_language(self):
+  """浏览器标签页标题也跟着语言切换。"""
+  p=self.page
+  expect(p).to_have_title('Blue Protocol: Star Resonance — Announcements')
+  p.locator('#panelLang').click()
+  expect(p).to_have_title('Blue Protocol: Star Resonance — 公告面板')
+  p.locator('#panelLang').click()
+  expect(p).to_have_title('Blue Protocol: Star Resonance — Announcements')
+
+ def test_push_toast_is_localized(self):
+  """后端返回的英文 message，面板要按 reason 出本地化文案。"""
+  p=self.page
+  p.locator('.nav-item').nth(1).click()   # 「推送群」页
+  p.locator('#btnPushAll').click()
+  p.wait_for_function("() => document.querySelector('#toast') && document.querySelector('#toast').className.includes('show')")
+  toast=p.locator('#toast').inner_text()
+  self.assertNotIn('No push targets yet',toast,'面板不应直接显示后端的英文 message')
+  self.assertTrue(toast.strip(),'推送后应有提示文案')
 if __name__=='__main__':unittest.main()

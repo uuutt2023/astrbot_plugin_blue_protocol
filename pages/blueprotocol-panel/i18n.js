@@ -137,6 +137,14 @@
       'confirm.clearImages': 'Clear the image cache? The next push will render them again.',
       'confirm.clearImagesTitle': 'Clear image cache',
       'toast.cleared': 'Cleared',
+      'cache.deleted': 'Deleted {n} image(s), freed {size}',
+      'cache.summaryCleared': 'Cleared {n} summary cache entr(y/ies)',
+      'page.title': 'Blue Protocol: Star Resonance — Announcements',
+      'push.reason.no_groups': 'No push targets yet — pick groups in the panel, or send "bp push on" in a group.',
+      'push.reason.no_list': 'The announcement list came back empty (the data source returned nothing).',
+      'push.reason.fetch_failed': 'Failed to fetch the announcement list.',
+      'push.reason.up_to_date': 'The latest announcement was already pushed — nothing new.',
+      'push.reason.ok': 'Pushed to {n} group(s).',
 
       /* ---------- 选择群弹窗 ---------- */
       'modal.pick.title': 'Select push targets',
@@ -295,6 +303,14 @@
       'confirm.clearImages': '清空截图缓存？下次推送会重新截图。',
       'confirm.clearImagesTitle': '清空截图缓存',
       'toast.cleared': '已清空',
+      'cache.deleted': '已删除 {n} 张，释放 {size}',
+      'cache.summaryCleared': '已清空 {n} 条摘要缓存',
+      'page.title': 'Blue Protocol: Star Resonance — 公告面板',
+      'push.reason.no_groups': '还没有推送群：在面板里按群名勾选，或在群里发「bp push on」。',
+      'push.reason.no_list': '公告列表是空的（数据源没有返回内容）。',
+      'push.reason.fetch_failed': '获取公告列表失败。',
+      'push.reason.up_to_date': '最新公告已经推送过了，没有新内容。',
+      'push.reason.ok': '已推送到 {n} 个群。',
 
       /* ---------- 选择群弹窗 ---------- */
       'modal.pick.title': '选择推送群',

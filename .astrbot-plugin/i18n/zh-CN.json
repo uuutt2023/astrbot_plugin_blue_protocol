@@ -26,6 +26,12 @@
       "hint": "越低越省流量。成图超过 2.5MB 时会自动继续降质/缩放"
     }
   },
+  "views": {
+    "blueprotocol-panel": {
+      "title": "Blue Protocol: Star Resonance 公告面板",
+      "description": "按群名管理推送群、立刻推送、查看长图与推送记录；面板右上角可切换中英文"
+    }
+  },
   "pages": {
     "blueprotocol-panel": {
       "title": "Blue Protocol: Star Resonance 公告面板",

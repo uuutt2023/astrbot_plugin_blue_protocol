@@ -494,7 +494,9 @@ def test_push_round_dedup_and_force():
         "napcat:GroupMessage:1002",
     ]
     assert len(calls["send_text"]) == 2
-    assert "Latest announcement" in calls["send_text"][0][1]
+    # 推送给群里的正文是中文（游戏公告标题本身也是中文）
+    assert "最新公告" in calls["send_text"][0][1]
+    assert "标题：" in calls["send_text"][0][1]
     assert "这是摘要" in calls["send_text"][0][1]
     # 记录写盘了：每群一条 push:umo
     records = json.loads((data_dir / "push_record.json").read_text(encoding="utf-8"))

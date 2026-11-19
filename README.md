@@ -1,10 +1,15 @@
 # astrbot_plugin_blue_protocol
 
 **Blue Protocol: Star Resonance** (《蓝色协议：星痕共鸣》) official announcement bot for AstrBot.
+《蓝色协议：星痕共鸣》官方公告推送插件 —— 公告列表、最新公告长图、按群去重、定时推送，带 Web 面板。
 
 Announcement list with paging and categories, latest announcement with a summary and a phone-sized long image, per-group deduplication, scheduled auto-push, plus a web panel for managing push targets by group name.
 
+公告列表支持分页与分类；最新公告带正文摘要与手机长图；按群去重；每 5 分钟检查一次自动推送；Web 面板可按群名管理推送群、手动推送、查看长图缓存。
+
 Data comes from the Tencent game announcement API behind the official site (`apps.game.qq.com/wmp/v3.1/`) — both the list and the article body are served straight from the API, no HTML scraping.
+
+数据来自官网背后的腾讯游戏公告接口（`apps.game.qq.com/wmp/v3.1/`），列表与正文都直接取自接口，不抓取 HTML。
 
 ---
 
@@ -15,6 +20,16 @@ Data comes from the Tencent game announcement API behind the official site (`app
 The announcement body is returned as HTML by the API, so the plugin renders it through its own template and takes a full-page screenshot at a 390×844 phone viewport — the content is complete, and it does not depend on the official site's JavaScript-rendered SPA.
 
 ![Announcement long image preview](docs/images/news-longimage-preview.jpg)
+
+## Announcement card
+
+When the long image cannot be rendered (Playwright unavailable), the plugin falls back to a share card built on the **official KV banner** (`game.gtimg.cn/images/bpm/web202412/kv.jpg`):
+
+- The banner fills the whole card **PPT style** — full bleed, `background-size: cover`.
+- A diagonal gradient scrim runs from **0 % opacity at the top-left to 100 % at the bottom-right**, and the banner itself is dimmed (`brightness(.58)`), so the title, summary and link stay readable.
+- The top-left corner reuses the official `.news-container::before / ::after` technique (`news-detail-bg.jpg`) to draw the accent divider line, masked so it fades out towards the right.
+
+![Announcement card preview](docs/images/news-card-preview.jpg)
 
 ## Web panel preview
 
@@ -142,6 +157,16 @@ python tools/make_logo.py              # regenerate logo.png / the panel icon
 公告正文由接口直接给 HTML，插件套进自带模板后用 Playwright 以 390×844 手机视口整页截图 —— 内容完整、不依赖官网那个 JS 渲染的 SPA。
 
 ![公告长图预览](docs/images/news-longimage-preview.jpg)
+
+## 公告卡片
+
+长图渲染不出来时（Playwright 不可用），插件会退回一张用**官方 KV banner**（`game.gtimg.cn/images/bpm/web202412/kv.jpg`）做的分享卡片：
+
+- 底图铺满整张卡片，走 **PPT 样式**：`background-size: cover`，整块画面铺满。
+- 斜向渐变滤镜从**左上角 0% 透明 → 右下角 100% 不透明**，同时把底图压暗（`brightness(.58)`），标题、摘要、链接都能看清。
+- 左上角复用官网 `.news-container::before / ::after` 的做法（`news-detail-bg.jpg`）画出蓝色分隔线，用遮罩让它往右淡出。
+
+![公告卡片预览](docs/images/news-card-preview.jpg)
 
 ## Web 面板
 

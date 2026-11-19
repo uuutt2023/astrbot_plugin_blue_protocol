@@ -26,6 +26,12 @@
       "hint": "Lower saves bandwidth. Images above 2.5MB are downscaled automatically."
     }
   },
+  "views": {
+    "blueprotocol-panel": {
+      "title": "Blue Protocol: Star Resonance — Announcements",
+      "description": "Manage push targets by group name, trigger a push manually, browse long images and push records; use the top-right button to switch between English and Chinese."
+    }
+  },
   "pages": {
     "blueprotocol-panel": {
       "title": "Blue Protocol: Star Resonance — Announcements",

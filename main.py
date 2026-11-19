@@ -499,7 +499,7 @@ class BlueProtocolNewsPlugin(Star):
     async def list_cmd(self, event: AstrMessageEvent):
         '''bp list [category] [page]: announcement list (category: notice/news/event/all)'''
         if not self._limit.ok(self._group_key(event)):
-            yield event.plain_result("Too many requests — please try again in a moment.")
+            yield event.plain_result("请求过于频繁，请稍后再试。")
             return
         try:
             tag_name, page = self._parse_list_args(event)
@@ -508,13 +508,13 @@ class BlueProtocolNewsPlugin(Star):
             size = int(self.config.get("list_page_size", 10) or 10)
             items, info = await fetch_news_list(page=page, page_size=size, tag_id=tag_id)
             if not items:
-                yield event.plain_result("No announcements found.")
+                yield event.plain_result("没有找到公告。")
                 return
-            title = f"{GAME_NAME} — Announcements"
+            title = f"{GAME_NAME} — 公告列表"
             label = tag_display_name(tag_id)
             if tag_id != TAG_ALL and label:
                 title += f" ({label})"
-            title += f" | Page {info.get('page', page)}/{info.get('totalpage', 1)}\n"
+            title += f" | 第 {info.get('page', page)}/{info.get('totalpage', 1)} 页\n"
             lines = [title]
             for i, it in enumerate(items):
                 tag = f"[{it['tag']}] " if it.get("tag") else ""
@@ -524,12 +524,12 @@ class BlueProtocolNewsPlugin(Star):
             total = int(info.get("total", len(items)))
             if info.get("totalpage", 1) > 1:
                 lines.append(
-                    f"... {total} announcements in total, page {info.get('page', page)}"
-                    f" of {info.get('totalpage', 1)} ({info.get('pagesize', size)} per page)"
+                    f"... 共 {total} 条公告，当前第 {info.get('page', page)} 页 / "
+                    f"共 {info.get('totalpage', 1)} 页（每页 {info.get('pagesize', size)} 条）"
                 )
             yield event.plain_result("\n\n".join(lines))
         except Exception as e:  # noqa: BLE001
-            yield event.plain_result(f"Failed to fetch announcements: {e}")
+            yield event.plain_result(f"获取公告失败：{e}")
 
     @staticmethod
     def _parse_list_args(event: AstrMessageEvent) -> tuple[str, int]:
@@ -552,7 +552,7 @@ class BlueProtocolNewsPlugin(Star):
     async def latest_cmd(self, event: AstrMessageEvent):
         '''bp latest: the newest announcement — summary text + phone-sized long image'''
         if not self._limit.ok(self._group_key(event)):
-            yield event.plain_result("Too many requests — please try again in a moment.")
+            yield event.plain_result("请求过于频繁，请稍后再试。")
             return
         for r in await self._latest(event, force=True):
             yield r
@@ -561,7 +561,7 @@ class BlueProtocolNewsPlugin(Star):
     async def latest_dedup_cmd(self, event: AstrMessageEvent):
         '''bp latest dedup: only replies when there is a new announcement (per-group dedup)'''
         if not self._limit.ok(self._group_key(event)):
-            yield event.plain_result("Too many requests — please try again in a moment.")
+            yield event.plain_result("请求过于频繁，请稍后再试。")
             return
         for r in await self._latest(event, force=False):
             yield r
@@ -571,7 +571,21 @@ class BlueProtocolNewsPlugin(Star):
         '''bp help: command usage'''
         p = _PREFIX_TEXT
         yield event.plain_result(
-            f"{GAME_NAME} announcement bot\n\n"
+            f"{GAME_NAME} 公告机器人\n\n"
+            f"{p} list [分类] [页码]\n"
+            f"    公告列表\n"
+            f"    分类：all | notice | news | event   （默认 all）\n"
+            f"    页码：从 1 开始（默认 1）\n\n"
+            f"{p} latest\n"
+            f"    最新公告 —— 摘要文字 + 手机长图\n\n"
+            f"{p} latest dedup\n"
+            f"    最新公告，只有出新公告时才回复\n\n"
+            f"{p} push on | off | status | test\n"
+            f"    本群自动推送，每 5 分钟检查一次（on / off / test 需要管理员）\n\n"
+            f"{p} reset\n"
+            f"    清空本群的公告推送记录（需要管理员）\n\n"
+            f"前缀别名：bp / blue protocol / blueprotocol\n\n"
+            f"—— English ——\n"
             f"{p} list [category] [page]\n"
             f"    announcement list\n"
             f"    category: all | notice | news | event   (default: all)\n"
@@ -594,7 +608,7 @@ class BlueProtocolNewsPlugin(Star):
             items, _ = await fetch_news_list(page=1, page_size=5)
             if not items:
                 if force:
-                    results.append(event.plain_result("No announcements found."))
+                    results.append(event.plain_result("没有找到公告。"))
                 return results
             it = items[0]
             if not force and last_pushed(key) == it["title"]:
@@ -610,7 +624,7 @@ class BlueProtocolNewsPlugin(Star):
         except Exception as e:  # noqa: BLE001
             logger.warning("latest announcement fetch failed: %s", e)
             if force:
-                results.append(event.plain_result(f"Failed to fetch announcements: {e}"))
+                results.append(event.plain_result(f"获取公告失败：{e}"))
         return results
 
     @staticmethod
@@ -627,10 +641,10 @@ class BlueProtocolNewsPlugin(Star):
 
     @staticmethod
     def _news_text(it: dict, summary: str) -> str:
-        tag = f"Category: {it['tag']}\n" if it.get("tag") else ""
+        tag = f"分类：{it['tag']}\n" if it.get("tag") else ""
         text = (
-            f"Latest announcement:\n\n{tag}Title: {it['title']}\n"
-            f"Date: {it['time']}\nLink: {it['url']}"
+            f"最新公告：\n\n{tag}标题：{it['title']}\n"
+            f"时间：{it['time']}\n链接：{it['url']}"
         )
         if summary:
             text += f"\n\n{summary}"
@@ -641,45 +655,44 @@ class BlueProtocolNewsPlugin(Star):
         '''bp push on|off|status|test: toggle auto-push for this group (checked every 5 minutes)'''
         arg = self._cap(T_PUSH, event)
         if not self._group_id(event):
-            yield event.plain_result("This command only works in group chats.")
+            yield event.plain_result("该指令只能在群聊中使用。")
             return
         groups = list(self.config.get("news_groups", []) or [])
         umo = self._norm_umo(self._umo_of(event))
         if arg == "on":
             if not self._is_admin(event):
-                yield event.plain_result("Administrator permission required.")
+                yield event.plain_result("需要管理员权限。")
                 return
             if umo not in groups:
                 groups.append(umo)
             self.config["news_groups"] = groups
             await self.save_config_now()
             yield event.plain_result(
-                f"Auto-push is now ON for this group "
-                f"({GAME_NAME} announcements, checked every 5 minutes)."
+                f"本群已开启自动推送"
+                f"（{GAME_NAME} 公告，每 5 分钟检查一次）。"
             )
         elif arg == "off":
             if not self._is_admin(event):
-                yield event.plain_result("Administrator permission required.")
+                yield event.plain_result("需要管理员权限。")
                 return
             self.config["news_groups"] = [g for g in groups if g != umo]
             await self.save_config_now()
-            yield event.plain_result("Auto-push is now OFF for this group.")
+            yield event.plain_result("本群已关闭自动推送。")
         elif arg == "status":
             on = umo in groups
             yield event.plain_result(
-                f"Auto-push for this group: "
-                f"{'ON (checked every 5 minutes)' if on else 'OFF'}\n"
-                "When ON, the bot pushes new announcements automatically."
+                f"本群自动推送：{'开启（每 5 分钟检查一次）' if on else '关闭'}\n"
+                "开启后，机器人会自动把新公告推送到群里。"
             )
         elif arg == "test":
             if not self._is_admin(event):
-                yield event.plain_result("Administrator permission required.")
+                yield event.plain_result("需要管理员权限。")
                 return
             for r in await self._latest(event, force=True):
                 yield r
         else:
             yield event.plain_result(
-                f"Usage: {_PREFIX_TEXT} push on | off | status | test"
+                f"用法：{_PREFIX_TEXT} push on | off | status | test"
             )
 
     def _umo_of(self, event: AstrMessageEvent) -> str:
@@ -689,14 +702,14 @@ class BlueProtocolNewsPlugin(Star):
     async def reset_cmd(self, event: AstrMessageEvent):
         '''bp reset: clear this group's push record (admin only)'''
         if not self._group_id(event):
-            yield event.plain_result("This command only works in group chats.")
+            yield event.plain_result("该指令只能在群聊中使用。")
             return
         if not self._is_admin(event):
-            yield event.plain_result("Administrator permission required.")
+            yield event.plain_result("需要管理员权限。")
             return
         key = self._group_id(event)
         clear_pushed(key)
-        yield event.plain_result("This group's push record has been reset.")
+        yield event.plain_result("本群的公告推送记录已清空。")
 
     # ---------------- 公告长图（自渲染正文，失败回退卡片） ----------------
 
@@ -722,12 +735,12 @@ class BlueProtocolNewsPlugin(Star):
                 )
                 screenshot.clean_shots()
                 if truncated:
-                    note = "\n\n(Announcement is long — the image shows only the first part. See the link for the full text.)"
+                    note = "\n\n（这条公告比较长，图片只显示前半部分，完整内容请点链接查看。）"
                 return path, note
             except RuntimeError as e:
                 if str(e) == "DOWNLOADING":
                     logger.info("browser component is downloading, falling back to the card image")
-                    note = "\n\n(The browser component is downloading in the background — the long image will be used once it is ready.)"
+                    note = "\n\n（浏览器组件正在后台下载，准备好之后就会改用长图。）"
                 else:
                     logger.warning("announcement long image render failed: %s", e)
             except Exception as e:  # noqa: BLE001
@@ -761,12 +774,18 @@ class BlueProtocolNewsPlugin(Star):
         """估算卡片内容高度并构造 clip（t2i 端点固定输出 800x720，需按内容裁剪）。
 
         与 templates/card.html 版式逐项对应：
-        brand 57 + content pad 26 + tag 24 + title(margin12+行40.6) + meta(10+18)
-        + desc(margin18+行30.4) + divider 21 + link 63 + foot 33 + page pad 14。
-        底部留 20px 同色余量（深色底不可见），宁多勿少防切字。
+        brand 72 + content pad 26 + tag 24 + title(margin12+行40.6) + meta(10+18)
+        + desc(margin18+行30.4) + divider 21 + link(18+24+行20.8) + foot 33
+        + page pad 18。
+        底部留 20px 余量（现在是 KV 底图，多留一点也只是多露一点背景），
+        宁多勿少防切字。
         """
         title_lines = self._measure_wrap_lines(it.get("title", ""), 736, 28)
-        h = 57 + 26 + 24 + 12 + title_lines * 40.6 + 10 + 18 + 21 + 63 + 33 + 14
+        link_lines = self._measure_wrap_lines(
+            f"原文链接：{it.get('url', '')}", 672, 13
+        )
+        h = 72 + 26 + 24 + 12 + title_lines * 40.6 + 10 + 18 + 21
+        h += 18 + 24 + link_lines * 20.8 + 33 + 18
         if summary:
             desc_lines = self._measure_wrap_lines(summary, 736, 16)
             h += 18 + desc_lines * 30.4

@@ -13,12 +13,21 @@ body {
   background: #0F1218;
 }
 .page { width: 390px; background: #0F1218; padding-bottom: 18px; }
-.brand {
-  display: flex; align-items: center; gap: 10px;
-  padding: 16px 18px; background: linear-gradient(135deg, #232C48, #3E4C7A);
+.kv {
+  position: relative;
+  height: 132px;
+  background: url(https://game.gtimg.cn/images/bpm/web202412/kv.jpg) no-repeat 50% 70%;
+  background-size: cover;
+  display: flex; align-items: flex-end; gap: 10px;
+  padding: 0 18px 14px;
 }
-.brand-tag { font-size: 13px; font-weight: 800; color: #FFD76E; letter-spacing: 2px; }
-.brand-name { font-size: 12px; color: rgba(255,255,255,.72); }
+.kv::after {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(10,12,20,.12) 0%, rgba(10,12,20,.74) 100%);
+}
+.kv-tag { position: relative; font-size: 13px; font-weight: 800; color: #FFD76E; letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,.85); }
+.kv-name { position: relative; font-size: 12px; color: rgba(255,255,255,.86); text-shadow: 0 2px 10px rgba(0,0,0,.85); }
 .content { padding: 20px 18px 0; }
 .tag {
   display: inline-block; font-size: 12px; font-weight: 800; color: #FFD76E;
@@ -53,20 +62,20 @@ body {
 </head>
 <body>
 <div class="page">
-  <div class="brand">
-    <span class="brand-tag">BLUE PROTOCOL</span>
-    <span class="brand-name">Star Resonance</span>
+  <div class="kv">
+    <span class="kv-tag">BLUE PROTOCOL</span>
+    <span class="kv-name">Star Resonance</span>
   </div>
   <div class="content">
     {{TAG}}
     <div class="title">{{TITLE}}</div>
-    <div class="meta">Published: {{TIME}}</div>
+    <div class="meta">发布时间：{{TIME}}</div>
     {{COVER}}
   </div>
   <div class="divider"></div>
   <div class="body">{{CONTENT}}</div>
-  <div class="link">Source: {{URL}}</div>
-  <div class="foot">gm.qq.com · Blue Protocol: Star Resonance — Official Announcements</div>
+  <div class="link">原文链接：{{URL}}</div>
+  <div class="foot">gm.qq.com · Blue Protocol: Star Resonance — 官方公告</div>
 </div>
 </body>
 </html>

@@ -142,6 +142,24 @@
 
   // ---------- 渲染 ----------
 
+  /* 后端返回的 message 是英文的，面板按 reason / 计数自己出文案。 */
+  var PUSH_REASONS = ['no_groups', 'no_list', 'fetch_failed', 'up_to_date', 'ok'];
+  function pushMessage(d) {
+    d = d || {};
+    var reason = d.reason || '';
+    if (PUSH_REASONS.indexOf(reason) < 0) return d.message || t('done');
+    if (reason === 'ok') return t('push.reason.ok', { n: (d.pushed || []).length });
+    return t('push.reason.' + reason);
+  }
+  function cacheMessage(d, kind) {
+    d = d || {};
+    if (kind === 'summary') return t('cache.summaryCleared', { n: d.removed || 0 });
+    if (typeof d.removed === 'number') {
+      return t('cache.deleted', { n: d.removed, size: fmtBytes(d.freed) });
+    }
+    return d.message || t('toast.cleared');
+  }
+
   function renderStatus() {
     var st = state.status || {};
     var pill = byId("runPill");
@@ -305,7 +323,7 @@
     byId("saveHint").textContent = t('checking');
     apiPost("page/push-now", {}).then(function (d) {
       byId("saveHint").textContent = "";
-      toast(d.message || t('done'), d.reason !== "ok" && d.reason !== "up_to_date");
+      toast(pushMessage(d), d.reason !== "ok" && d.reason !== "up_to_date");
       return loadAll();
     }).catch(fail).then(function () {
       btn.disabled = false;
@@ -337,8 +355,8 @@
       umo: state.testTarget,
       force: byId("testForce").checked
     }).then(function (d) {
-      byId("testResult").textContent = d.message || t('done');
-      toast(d.message || t('done'), !(d.pushed || []).length);
+      byId("testResult").textContent = pushMessage(d);
+      toast(pushMessage(d), !(d.pushed || []).length);
       return loadAll();
     }).catch(function (err) {
       byId("testResult").textContent = (err && err.message) || t('pushFailed');
@@ -364,14 +382,14 @@
     confirmModal(t('confirm.clearImages'), t('confirm.clearImagesTitle')).then(function (ok) {
       if (!ok) return;
       apiPost("page/shots/clear", {}).then(function (d) {
-        return loadAll().then(function () { toast(d.message || t('toast.cleared')); });
+        return loadAll().then(function () { toast(cacheMessage(d)); });
       }).catch(fail);
     });
   }
 
   function clearCache() {
     apiPost("page/cache/clear", {}).then(function (d) {
-      return loadAll().then(function () { toast(d.message || t('toast.cleared')); });
+      return loadAll().then(function () { toast(cacheMessage(d, 'summary')); });
     }).catch(fail);
   }
 
