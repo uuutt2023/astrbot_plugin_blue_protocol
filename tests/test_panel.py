@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""天刀公告面板后端（wxnews/page.py）单测：桩掉 astrbot 直接驱动 handler。
+"""Blue Protocol 公告面板后端（bpnews/page.py）单测：桩掉 astrbot 直接驱动 handler。
 
     python tests/test_panel.py
 全绿打印 OK。
@@ -39,8 +39,8 @@ def _install_astrbot_stub():
 
 _install_astrbot_stub()
 
-from wxnews import page as page_mod  # noqa: E402
-from wxnews.groups import GroupNameResolver  # noqa: E402
+from bpnews import page as page_mod  # noqa: E402
+from bpnews.groups import GroupNameResolver  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ class FakePlugin:
         pushed = [target] if target else list(self._push_groups()[:1])
         return {
             "reason": "ok",
-            "title": "9月26日例行维护公告",
+            "title": "11月12日例行维护公告",
             "pushed": pushed,
             "skipped": [],
             "message": "已推送",
@@ -138,7 +138,7 @@ class FakePlugin:
 
 def make_case(**cfg):
     """一个临时数据目录 + 假插件 + 控制器。"""
-    data_dir = tempfile.mkdtemp(prefix="wxnews-panel-")
+    data_dir = tempfile.mkdtemp(prefix="blueprotocol-panel-")
     plugin = FakePlugin(data_dir, **cfg)
     ctrl = page_mod.NewsPageController(None, plugin, data_dir=data_dir)
     return plugin, ctrl, data_dir
@@ -188,8 +188,8 @@ def test_routes_registered():
         "/page/cache/clear",
         "/page/config/save",
     ):
-        assert f"/astrbot_plugin_wuxianews{suffix}" in paths, suffix
-    assert all(p.startswith("/astrbot_plugin_wuxianews/") for p in paths)
+        assert f"/astrbot_plugin_blue_protocol{suffix}" in paths, suffix
+    assert all(p.startswith("/astrbot_plugin_blue_protocol/") for p in paths)
 
 
 def test_meta_reads_config():
@@ -208,12 +208,12 @@ def test_meta_reads_config():
 
 def test_status_counts_and_labels():
     plugin, ctrl, data_dir = make_case(news_groups=["napcat:GroupMessage:1001"])
-    plugin.groups.remember("napcat:GroupMessage:1001", group_name="天刀交流群", member_count=200)
+    plugin.groups.remember("napcat:GroupMessage:1001", group_name="星痕共鸣交流群", member_count=200)
     plugin._last_check = 1000.0
     plugin._scheduler_task = FakeTask()
     # 推送记录 + 摘要缓存 + 一张截图
     with open(os.path.join(data_dir, "push_record.json"), "w", encoding="utf-8") as fh:
-        json.dump({"push:napcat:GroupMessage:1001": "9月26日例行维护公告"}, fh)
+        json.dump({"push:napcat:GroupMessage:1001": "11月12日例行维护公告"}, fh)
     with open(os.path.join(data_dir, "summary_cache.json"), "w", encoding="utf-8") as fh:
         json.dump({"http://x": {"t": 1, "s": "摘要"}}, fh)
     shot_dir = os.path.join(data_dir, "news_shots")
@@ -229,9 +229,9 @@ def test_status_counts_and_labels():
     assert data["groups"] == [
         {
             "umo": "napcat:GroupMessage:1001",
-            "label": "天刀交流群（1001）",
+            "label": "星痕共鸣交流群（1001）",
             "group_id": "1001",
-            "last_pushed": "9月26日例行维护公告",
+            "last_pushed": "11月12日例行维护公告",
         }
     ]
     assert data["record_count"] == 1
@@ -242,7 +242,7 @@ def test_status_counts_and_labels():
 
 def test_groups_list_and_refresh():
     plugin, ctrl, _ = make_case(news_groups=["napcat:GroupMessage:1001"])
-    plugin.groups.remember("napcat:GroupMessage:1001", group_name="天刀交流群")
+    plugin.groups.remember("napcat:GroupMessage:1001", group_name="星痕共鸣交流群")
     plugin.groups.remember("napcat:GroupMessage:2002", group_name="活动群")
     plugin.groups.remember("napcat:GroupMessage:3003", group_name="没开推送的群")
 
@@ -252,7 +252,7 @@ def test_groups_list_and_refresh():
     assert data["pushed"] == 1 and data["total"] == 3
     assert plugin.refresh_calls == []  # 没带 refresh 不打平台接口
     by_value = {g["value"]: g for g in data["groups"]}
-    assert by_value["napcat:GroupMessage:1001"]["label"] == "天刀交流群（1001）"
+    assert by_value["napcat:GroupMessage:1001"]["label"] == "星痕共鸣交流群（1001）"
     assert by_value["napcat:GroupMessage:1001"]["enabled"] is True
     assert by_value["napcat:GroupMessage:3003"]["enabled"] is False
     assert data["groups"][0]["value"] == "napcat:GroupMessage:1001"  # 已勾选的排前面
@@ -288,7 +288,7 @@ def test_save_groups_writes_config():
     assert plugin.config.save_count == 1
     assert [a["umo"] for a in data["added"]] == ["napcat:GroupMessage:2002"]
     assert data["removed"] == []
-    assert "新增 1 个" in msg
+    assert "1 added" in msg
 
 
 def test_save_groups_validation():
@@ -310,20 +310,20 @@ def test_save_groups_validation():
 
 def test_push_now_all_and_target():
     plugin, ctrl, _ = make_case(news_groups=["napcat:GroupMessage:1001"])
-    plugin.groups.remember("napcat:GroupMessage:1001", group_name="天刀交流群")
+    plugin.groups.remember("napcat:GroupMessage:1001", group_name="星痕共鸣交流群")
 
     with_request(FakeRequest(body={}, method="POST"))
     ok, data, msg = unwrap(run(ctrl.push_now()))
     assert ok and msg == "已推送"
     assert plugin.push_calls == [(None, False)]
-    assert data["pushed"] == [{"umo": "napcat:GroupMessage:1001", "label": "天刀交流群（1001）"}]
+    assert data["pushed"] == [{"umo": "napcat:GroupMessage:1001", "label": "星痕共鸣交流群（1001）"}]
 
     with_request(
         FakeRequest(body={"umo": "napcat:GroupMessage:1001", "force": True}, method="POST")
     )
     ok, data, _ = unwrap(run(ctrl.push_now()))
     assert ok and plugin.push_calls[-1] == ("napcat:GroupMessage:1001", True)
-    assert data["target"]["label"] == "天刀交流群（1001）"
+    assert data["target"]["label"] == "星痕共鸣交流群（1001）"
 
 
 def test_push_now_without_plugin_support():
@@ -336,7 +336,7 @@ def test_push_now_without_plugin_support():
 
 def test_records_list_and_reset():
     plugin, ctrl, data_dir = make_case(news_groups=["napcat:GroupMessage:1001"])
-    plugin.groups.remember("napcat:GroupMessage:1001", group_name="天刀交流群")
+    plugin.groups.remember("napcat:GroupMessage:1001", group_name="星痕共鸣交流群")
     with open(os.path.join(data_dir, "push_record.json"), "w", encoding="utf-8") as fh:
         json.dump(
             {
@@ -350,12 +350,12 @@ def test_records_list_and_reset():
     ok, data, _ = unwrap(run(ctrl.get_records()))
     assert ok and data["count"] == 2
     labels = {r["label"] for r in data["records"]}
-    assert "天刀交流群（1001）" in labels and "1001" in labels
+    assert "星痕共鸣交流群（1001）" in labels and "1001" in labels
 
     # 单群重置：两种 key 都要清掉
     with_request(FakeRequest(body={"umo": "napcat:GroupMessage:1001"}, method="POST"))
     ok, data, msg = unwrap(run(ctrl.reset_records()))
-    assert ok and data["removed"] == 2 and "已重置" in msg
+    assert ok and data["removed"] == 2 and "reset" in msg.lower()
     with_request(FakeRequest())
     ok, data, _ = unwrap(run(ctrl.get_records()))
     assert data["count"] == 0
@@ -365,7 +365,7 @@ def test_records_list_and_reset():
         json.dump({"a": "1", "b": "2"}, fh)
     with_request(FakeRequest(body={}, method="POST"))
     ok, data, msg = unwrap(run(ctrl.reset_records()))
-    assert ok and data["removed"] == 2 and "已清空" in msg
+    assert ok and data["removed"] == 2 and "cleared" in msg.lower()
 
 
 def test_shots_list_and_clear():
@@ -384,7 +384,7 @@ def test_shots_list_and_clear():
 
     with_request(FakeRequest(body={}, method="POST"))
     ok, data, msg = unwrap(run(ctrl.clear_shots()))
-    assert ok and data["removed"] == 2 and data["freed"] == 30 and "已删除" in msg
+    assert ok and data["removed"] == 2 and data["freed"] == 30 and "deleted" in msg.lower()
     with_request(FakeRequest())
     ok, data, _ = unwrap(run(ctrl.get_shots()))
     assert data["count"] == 0
@@ -396,7 +396,7 @@ def test_clear_summary_cache():
         json.dump({"u1": {"t": 1, "s": "a"}, "u2": {"t": 2, "s": "b"}}, fh)
     with_request(FakeRequest(body={}, method="POST"))
     ok, data, msg = unwrap(run(ctrl.clear_cache()))
-    assert ok and data["removed"] == 2 and "已清空 2 条" in msg
+    assert ok and data["removed"] == 2 and "Cleared 2" in msg
     assert not os.path.exists(os.path.join(data_dir, "summary_cache.json"))
 
 
@@ -422,7 +422,7 @@ def test_save_config_validation_and_ok():
     ok, data, msg = unwrap(run(ctrl.save_config()))
     assert ok and data == {"shot_enabled": False, "shot_max_height": 8000, "shot_quality": 60}
     assert plugin.config["shot_max_height"] == 8000 and plugin.config.save_count == 1
-    assert "已保存" in msg
+    assert "saved" in msg.lower()
 
 
 def test_normalize_umos():

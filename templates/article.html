@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0F1218; }
+body {
+  width: 390px;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Helvetica Neue", sans-serif;
+  color: #ECEDF2; -webkit-font-smoothing: antialiased;
+  background: #0F1218;
+}
+.page { width: 390px; background: #0F1218; padding-bottom: 18px; }
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 18px; background: linear-gradient(135deg, #232C48, #3E4C7A);
+}
+.brand-tag { font-size: 13px; font-weight: 800; color: #FFD76E; letter-spacing: 2px; }
+.brand-name { font-size: 12px; color: rgba(255,255,255,.72); }
+.content { padding: 20px 18px 0; }
+.tag {
+  display: inline-block; font-size: 12px; font-weight: 800; color: #FFD76E;
+  background: rgba(255,215,110,.14); padding: 3px 10px; border-radius: 6px;
+}
+.title {
+  margin-top: 12px; font-size: 21px; font-weight: 800; color: #fff;
+  line-height: 1.5; letter-spacing: .5px; word-break: break-word;
+}
+.meta { margin-top: 10px; font-size: 12px; color: #868A99; }
+.cover {
+  display: block; width: 100%; margin-top: 14px; border-radius: 10px;
+  background: #1A1F2B; border: 1px solid rgba(255,255,255,.07);
+}
+.divider { height: 1px; background: rgba(255,255,255,.08); margin: 18px 18px 0; }
+.body {
+  margin-top: 16px; font-size: 15px; line-height: 1.85; color: #E4E6EC;
+  word-break: break-word; overflow-wrap: anywhere;
+}
+.body p { margin: 0 0 10px; }
+.body br { content: ""; display: block; margin-bottom: 6px; }
+.body img { max-width: 100%; border-radius: 8px; }
+.body table { max-width: 100%; border-collapse: collapse; }
+.body td, .body th { border: 1px solid rgba(255,255,255,.12); padding: 4px 6px; font-size: 13px; }
+.link {
+  margin: 18px 18px 0; font-size: 11px; color: #8CB2F0; background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 12px;
+  word-break: break-all; line-height: 1.6;
+}
+.foot { padding: 14px 18px 0; font-size: 11px; color: #6E7280; text-align: right; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="brand">
+    <span class="brand-tag">BLUE PROTOCOL</span>
+    <span class="brand-name">Star Resonance</span>
+  </div>
+  <div class="content">
+    {{TAG}}
+    <div class="title">{{TITLE}}</div>
+    <div class="meta">Published: {{TIME}}</div>
+    {{COVER}}
+  </div>
+  <div class="divider"></div>
+  <div class="body">{{CONTENT}}</div>
+  <div class="link">Source: {{URL}}</div>
+  <div class="foot">gm.qq.com · Blue Protocol: Star Resonance — Official Announcements</div>
+</div>
+</body>
+</html>

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""天刀公告 main.py 冒烟测试：桩掉 astrbot 把插件类拉起来，测面板接线与推送逻辑。
+"""Blue Protocol: Star Resonance main.py 冒烟测试：桩掉 astrbot 把插件类拉起来，测面板接线与推送逻辑。
 
-    python tests/test_wuxianews_main.py
+    python tests/test_blueprotocol_main.py
 全绿打印 OK。
 
 覆盖：import 健全性 / 11 个面板接口注册 / 群名记录（事件自带 + 后台问平台）/
-刷新群列表 / 一次推送的去重与强制重发 / _tick 节流 / terminate 落盘。
+刷新群列表 / 一次推送的去重与强制重发 / _tick 节流 / 指令参数解析 / terminate 落盘。
 """
 import asyncio
 import json
@@ -51,7 +51,7 @@ _FILTER = types.SimpleNamespace(
     EventMessageType=_EventMessageType,
 )
 
-_DATA_ROOT = tempfile.mkdtemp(prefix="wxnews-main-")
+_DATA_ROOT = tempfile.mkdtemp(prefix="bpnews-main-")
 
 
 def _install_astrbot_stub():
@@ -106,8 +106,8 @@ def _install_astrbot_stub():
 
 _install_astrbot_stub()
 
-from wxnews import page as page_mod  # noqa: E402
-import main as wx_main  # noqa: E402
+from bpnews import page as page_mod  # noqa: E402
+import main as bp_main  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -182,7 +182,13 @@ class FakePlatformInst:
         return self._client
 
 
-def make_event(text="天刀公告列表", umo="napcat:GroupMessage:1001", gid="1001", group_name=None, bot=None):
+def make_event(
+    text="bp list",
+    umo="napcat:GroupMessage:1001",
+    gid="1001",
+    group_name=None,
+    bot=None,
+):
     ev = types.SimpleNamespace(
         message_str=text,
         unified_msg_origin=umo,
@@ -199,11 +205,11 @@ def make_event(text="天刀公告列表", umo="napcat:GroupMessage:1001", gid="1
 
 def make_plugin(platform_insts=None, **cfg):
     """新数据目录 + 假 context + 真插件实例；返回插件、context、数据目录。"""
-    data_dir = tempfile.mkdtemp(prefix="wxnews-case-")
-    wx_main.DATA_DIR = None
-    wx_main.get_astrbot_data_path = lambda: data_dir
+    data_dir = tempfile.mkdtemp(prefix="bpnews-case-")
+    bp_main.DATA_DIR = None
+    bp_main.get_astrbot_data_path = lambda: data_dir
     ctx = FakeContext(platform_insts=platform_insts)
-    plugin = wx_main.WuxiaNewsPlugin(ctx, cfg)
+    plugin = bp_main.BlueProtocolNewsPlugin(ctx, cfg)
     return plugin, ctx, plugin.data_dir
 
 
@@ -212,21 +218,38 @@ def run(coro):
 
 
 NEWS_ITEM = {
-    "tag": "公告",
-    "title": "9月26日例行维护公告",
-    "time": "2026-09-26",
-    "url": "http://wuxia.qq.com/news/1.shtml",
+    "news_id": "18951093",
+    "tag": "Notice",
+    "title": "11月12日例行维护公告",
+    "time": "2026-11-12 11:02:25",
+    "desc": "11月12日例行维护公告",
+    "cover": "https://static.gametalk.qq.com/image/440/a.png",
+    "url": "https://gm.qq.com/web202503/news-detail.html?newsid=18951093",
 }
+
+NEWS_DETAIL = {
+    **NEWS_ITEM,
+    "content": "<p>冒险者，您好！<br />《星痕共鸣》已于11月12日8:00至11:00进行例行维护。</p>",
+}
+
+PAGE_INFO = {"page": 1, "pagesize": 10, "total": 125, "totalpage": 13}
+
+
+def _async(value):
+    async def _inner(*a, **k):
+        return value
+
+    return _inner
 
 
 def patch_pipeline(plugin):
     """把网络相关的几个模块函数换成本地桩，只测推送流程本身。"""
     calls = {"send_text": [], "send_img": []}
-    wx_main.fetch_news_list = _async([NEWS_ITEM])
-    wx_main.pick_latest = lambda items: dict(NEWS_ITEM)
-    wx_main.fetch_summary_cached = _async("这是摘要")
+    bp_main.fetch_news_list = _async(([dict(NEWS_ITEM)], dict(PAGE_INFO)))
+    bp_main.fetch_detail = _async(dict(NEWS_DETAIL))
+    bp_main.fetch_summary_cached = _async("这是摘要")
 
-    async def _news_image(it, summary):
+    async def _news_image(it, detail, summary):
         return None, ""
 
     async def _send_text_to(umo, text):
@@ -241,13 +264,6 @@ def patch_pipeline(plugin):
     return calls
 
 
-def _async(value):
-    async def _inner(*a, **k):
-        return value
-
-    return _inner
-
-
 def route_paths(ctx):
     return [path for path, *_ in ctx.routes]
 
@@ -259,8 +275,8 @@ def route_paths(ctx):
 
 def test_import_and_routes():
     plugin, ctx, _ = make_plugin()
-    assert wx_main.WuxiaNewsPlugin is not None
-    assert page_mod.PLUGIN_NAME == "astrbot_plugin_wuxianews"
+    assert bp_main.BlueProtocolNewsPlugin is not None
+    assert page_mod.PLUGIN_NAME == "astrbot_plugin_blue_protocol"
     paths = route_paths(ctx)
     for suffix in (
         "/page/meta",
@@ -275,7 +291,7 @@ def test_import_and_routes():
         "/page/cache/clear",
         "/page/config/save",
     ):
-        assert f"/astrbot_plugin_wuxianews{suffix}" in paths, suffix
+        assert f"/astrbot_plugin_blue_protocol{suffix}" in paths, suffix
     assert plugin.page.plugin is plugin
     assert plugin.page.data_dir == plugin.data_dir
     assert plugin.groups.path.name == "groups.json"
@@ -311,13 +327,67 @@ def test_bare_group_number_gets_routable_instance_id():
 
 def test_plugin_status_route_works_end_to_end():
     plugin, _, _ = make_plugin(news_groups=["1001"])
-    run(plugin.on_any_message(make_event(group_name="天刀交流群")))
+    run(plugin.on_any_message(make_event(group_name="Blue Protocol Fans")))
     page_mod.request = FakeRequest()
     resp = run(plugin.page.get_status())
     page_mod.request = None
     payload = resp["data"]
     assert payload["status"] == "ok"
-    assert payload["data"]["groups"][0]["label"] == "天刀交流群（1001）"
+    assert payload["data"]["groups"][0]["label"] == "Blue Protocol Fans（1001）"
+
+
+# ---------------------------------------------------------------------------
+# 指令参数解析
+# ---------------------------------------------------------------------------
+
+
+def test_command_prefixes():
+    """bp / blue protocol / blueprotocol 三个前缀都认。"""
+    for text in ("bp list", "blue protocol list", "blueprotocol list"):
+        assert bp_main.re.match(bp_main.T_LIST, text), text
+    for text in ("bp latest", "blue protocol latest", "blueprotocol latest"):
+        assert bp_main.re.match(bp_main.T_LATEST, text), text
+    for text in ("bp push on", "blue protocol push on"):
+        assert bp_main.re.match(bp_main.T_PUSH, text), text
+    assert bp_main.re.match(bp_main.T_HELP, "bp help")
+    assert bp_main.re.match(bp_main.T_RESET, "bp reset")
+    # 「latest dedup」不能被「latest」抢走
+    assert not bp_main.re.match(bp_main.T_LATEST, "bp latest dedup")
+    # 中文指令不再触发
+    for text in ("星痕共鸣公告列表", "星痕最新公告", "天刀公告列表"):
+        assert not bp_main.re.match(bp_main.T_LIST, text), text
+        assert not bp_main.re.match(bp_main.T_LATEST, text), text
+
+
+def test_parse_list_args():
+    plugin, _, _ = make_plugin()
+    cases = {
+        "bp list": ("", 1),
+        "bp list 2": ("", 2),
+        "bp list notice": ("notice", 1),
+        "bp list notice 3": ("notice", 3),
+        "bp list news 2": ("news", 2),
+        "bp list event": ("event", 1),
+        "bp list all": ("all", 1),
+        "blue protocol list announcement 4": ("announcement", 4),
+        "blueprotocol list ann 5": ("ann", 5),
+    }
+    for text, expected in cases.items():
+        got = plugin._parse_list_args(make_event(text=text))
+        assert got == expected, (text, got, expected)
+
+
+def test_push_command_argument():
+    plugin, _, _ = make_plugin()
+    for text, expected in (
+        ("bp push on", "on"),
+        ("bp push off", "off"),
+        ("bp push status", "status"),
+        ("bp push test", "test"),
+        ("bp push", ""),
+        ("blue protocol push on", "on"),
+    ):
+        assert plugin._cap(bp_main.T_PUSH, make_event(text=text)) == expected, text
 
 
 # ---------------------------------------------------------------------------
@@ -327,8 +397,8 @@ def test_plugin_status_route_works_end_to_end():
 
 def test_remember_group_from_event():
     plugin, _, _ = make_plugin()
-    run(plugin.on_any_message(make_event(group_name="天刀交流群")))
-    assert plugin.groups.name_of("napcat:GroupMessage:1001") == "天刀交流群"
+    run(plugin.on_any_message(make_event(group_name="Blue Protocol Fans")))
+    assert plugin.groups.name_of("napcat:GroupMessage:1001") == "Blue Protocol Fans"
     # 落盘了（面板不用等新消息）
     assert plugin.groups.path.is_file()
     # 事件不带群名时保持「群 群号」，不写空名
@@ -339,10 +409,12 @@ def test_remember_group_from_event():
 
 def test_learn_group_name_from_platform():
     plugin, _, _ = make_plugin()
-    client = FakeClient(group_info={"group_id": 1001, "group_name": "天刀交流群", "member_count": 300})
+    client = FakeClient(
+        group_info={"group_id": 1001, "group_name": "Blue Protocol Fans", "member_count": 300}
+    )
     run(plugin._learn_group_name(client, "napcat:GroupMessage:1001", "1001", "napcat"))
     assert client.calls[0] == ("get_group_info", {"group_id": 1001})
-    assert plugin.groups.name_of("napcat:GroupMessage:1001") == "天刀交流群"
+    assert plugin.groups.name_of("napcat:GroupMessage:1001") == "Blue Protocol Fans"
     # 平台失败：静默
     bad = FakeClient(fail=True)
     run(plugin._learn_group_name(bad, "napcat:GroupMessage:1003", "1003", "napcat"))
@@ -352,7 +424,7 @@ def test_learn_group_name_from_platform():
 def test_refresh_group_names_from_platform():
     client = FakeClient(
         group_list=[
-            {"group_id": 1001, "group_name": "天刀交流群", "member_count": 300},
+            {"group_id": 1001, "group_name": "Blue Protocol Fans", "member_count": 300},
             {"group_id": 2002, "group_name": "活动群"},
         ]
     )
@@ -408,7 +480,7 @@ def test_push_round_no_groups():
     plugin, _, _ = make_plugin()
     result = run(plugin._push_round())
     assert result["reason"] == "no_groups" and result["pushed"] == []
-    assert "还没有设置推送群" in result["message"]
+    assert "No push targets" in result["message"]
 
 
 def test_push_round_dedup_and_force():
@@ -422,7 +494,8 @@ def test_push_round_dedup_and_force():
         "napcat:GroupMessage:1002",
     ]
     assert len(calls["send_text"]) == 2
-    assert "最新公告" in calls["send_text"][0][1] and "这是摘要" in calls["send_text"][0][1]
+    assert "Latest announcement" in calls["send_text"][0][1]
+    assert "这是摘要" in calls["send_text"][0][1]
     # 记录写盘了：每群一条 push:umo
     records = json.loads((data_dir / "push_record.json").read_text(encoding="utf-8"))
     assert set(records) == {
@@ -458,11 +531,11 @@ def test_push_round_fetch_failure():
     async def boom(*a, **k):
         raise RuntimeError("网络断了")
 
-    wx_main.fetch_news_list = boom
+    bp_main.fetch_news_list = boom
     result = run(plugin._push_round())
     assert result["reason"] == "fetch_failed" and "网络断了" in result["message"]
 
-    wx_main.fetch_news_list = _async([])
+    bp_main.fetch_news_list = _async(([], dict(PAGE_INFO)))
     assert run(plugin._push_round())["reason"] == "no_list"
 
 
@@ -496,11 +569,11 @@ def test_tick_throttle():
 
 def test_terminate_flushes_group_names():
     plugin, _, data_dir = make_plugin()
-    run(plugin.on_any_message(make_event(group_name="天刀交流群")))
+    run(plugin.on_any_message(make_event(group_name="Blue Protocol Fans")))
     plugin._scheduler_task = None
     run(plugin.terminate())
     saved = json.loads((data_dir / "groups.json").read_text(encoding="utf-8"))
-    assert saved["groups"]["napcat:GroupMessage:1001"]["group_name"] == "天刀交流群"
+    assert saved["groups"]["napcat:GroupMessage:1001"]["group_name"] == "Blue Protocol Fans"
 
 
 def test_norm_umo_rewrites_adapter_type_to_instance_id():
@@ -518,6 +591,15 @@ def test_norm_umo_rewrites_adapter_type_to_instance_id():
     assert plugin._norm_umo("telegram:GroupMessage:9") == "telegram:GroupMessage:9"
     # 裸群号：补到 aiocqhttp 类型的实例 id
     assert plugin._norm_umo("1001") == "napcat:GroupMessage:1001"
+
+
+def test_news_text_contains_tag_and_link():
+    plugin, _, _ = make_plugin()
+    text = plugin._news_text(NEWS_ITEM, "摘要内容")
+    assert "Notice" in text
+    assert NEWS_ITEM["title"] in text
+    assert NEWS_ITEM["url"] in text
+    assert "摘要内容" in text
 
 
 def main():

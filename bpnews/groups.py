@@ -7,7 +7,7 @@ QQ 的 OneBot 群消息事件本身不带群名，所以面板里原来只能看
 - 消息事件自带的群名（Telegram / Discord / QQ 官方等平台有）：``remember()`` + source=event
 - 平台适配器查出来的群名（OneBot 的 get_group_list / get_group_info）：``merge_api_groups()``
 
-数据落在 data/plugin_data/astrbot_plugin_wuxianews/groups.json：
+数据落在 data/plugin_data/astrbot_plugin_blue_protocol/groups.json：
 
     {
       "version": 1,

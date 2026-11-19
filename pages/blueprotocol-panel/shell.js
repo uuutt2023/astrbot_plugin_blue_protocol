@@ -1,7 +1,7 @@
 /* Standalone panel shell. Local resources only; no framework or external assets. */
 (function () {
   "use strict";
-  var c = {"title": "天刀公告", "brand": "TIANDAO / NEWSROOM", "mark": "刀", "hero": "江湖新讯，\n一页尽知。", "sub": "从官网公告到群内提醒，管理你的天涯明月刀资讯推送。", "color": "jade", "version": "v1.3.7", "old": "v1.3.6", "views": [["groups", "推送群", "DELIVERY", [0]], ["records", "推送记录", "HISTORY", [1]], ["settings", "公告图设置", "RENDER SETTINGS", [2]], ["cache", "截图缓存", "IMAGE ARCHIVE", [3]]]};
+  var c = {"title": "Blue Protocol: Star Resonance", "brand": "BLUE PROTOCOL / NEWSROOM", "mark": "BP", "hero": "Resonance news,\none page.\n", "sub": "From official announcements to group alerts — manage your Blue Protocol: Star Resonance news feed.", "color": "star", "version": "v1.0.0", "old": "v1.0.0", "views": [["groups", "Push targets", "DELIVERY", [0]], ["records", "Push records", "HISTORY", [1]], ["settings", "Image settings", "RENDER SETTINGS", [2]], ["cache", "Image cache", "IMAGE ARCHIVE", [3]]]};
   var root = document.documentElement;
   var wrap = document.querySelector('.wrap');
   var bar = wrap.querySelector('.topbar');
@@ -29,17 +29,17 @@
   var brand = el('a', 'brand'); brand.href = '#overview';
   brand.append(el('span', 'brand-symbol', c.mark));
   var brandText = el('span'); brandText.append(el('strong', '', c.title), el('small', '', c.brand)); brand.append(brandText);
-  rail.append(brand, el('div', 'nav-label', '工作空间 / WORKSPACE'));
-  var nav = el('nav'); nav.setAttribute('aria-label','页面导航'); rail.append(nav);
+  rail.append(brand, el('div', 'nav-label', 'WORKSPACE'));
+  var nav = el('nav'); nav.setAttribute('aria-label','Page navigation'); rail.append(nav);
   var railFooter = el('div', 'rail-footer');
-  var connection = el('span','connection','等待连接');
+  var connection = el('span','connection','Connecting');
   railFooter.append(connection, el('small','',c.version + ' · ASTRBOT PLUGIN')); rail.append(railFooter);
   var stage = el('main','stage'); stage.id='main-content'; stage.tabIndex=-1;
   var header = el('header','workspace-header');
   var crumb=el('div','breadcrumb', c.brand);
   var tools=el('div','header-tools');
   var pill=bar.querySelector('.pill'); if(pill) tools.append(pill);
-  var themeButton=button('☾ 深色',function(){prefs.theme=root.dataset.theme==='dark'?'light':'dark'; savePrefs();});
+  var themeButton=button('☾ Dark',function(){prefs.theme=root.dataset.theme==='dark'?'light':'dark'; savePrefs();});
   themeButton.id='panelTheme'; tools.append(themeButton);
   // Preserve the original business action nodes and all their event handlers.
   var actionBar=el('div','workspace-actions');
@@ -50,7 +50,7 @@
   var eyebrow=el('span','eyebrow'); var title=el('h1');
   headingText.append(eyebrow,title); heading.append(headingText,actionBar); content.append(heading);
   var feedback=el('div','request-feedback'); feedback.hidden=true; feedback.setAttribute('role','alert'); content.append(feedback);
-  var sync=el('div','sync-line','数据尚未同步'); sync.setAttribute('role','status'); content.append(sync);
+  var sync=el('div','sync-line','Not synced yet'); sync.setAttribute('role','status'); content.append(sync);
   var views={};
   function addView(key,label,english,node) {
     node.classList.add('panel-view'); node.id='panel-'+key; node.hidden=true;
@@ -65,23 +65,23 @@
   var overview=el('section');
   var hero=el('div','hero'); var copy=el('div','hero-copy');
   copy.append(el('span','eyebrow',c.brand),el('h2','',c.hero),el('p','',c.sub));
-  copy.append(button('进入'+c.views[0][1]+'  ↗',function(){location.hash=c.views[0][0];},'primary'));
+  copy.append(button('Open '+c.views[0][1]+'  ↗',function(){location.hash=c.views[0][0];},'primary'));
   var art=el('div','hero-art'); art.setAttribute('aria-hidden','true');
-  art.append(el('span','art-orbit'),document.getElementById('heroArtTemplate').content.cloneNode(true),el('span','art-caption', c.color==='pink'?'ON AIR / STAY CONNECTED':c.color==='jade'?'山河如故 · 江湖常新':'IF MESSAGE → REPLY'));
+  art.append(el('span','art-orbit'),document.getElementById('heroArtTemplate').content.cloneNode(true),el('span','art-caption', c.color==='pink'?'ON AIR / STAY CONNECTED':c.color==='star'?'STAR RESONANCE · ADVENTURERS':'IF MESSAGE → REPLY'));
   hero.append(copy,art); overview.append(hero);
-  var statsTitle=el('div','section-heading'); statsTitle.append(el('h2','','运行速览'),el('span','hint','数据以最近一次读取为准')); overview.append(statsTitle,stats);
+  var statsTitle=el('div','section-heading'); statsTitle.append(el('h2','','Runtime overview'),el('span','hint','Figures reflect the last read')); overview.append(statsTitle,stats);
   var shortcuts=el('div','shortcuts');
   c.views.forEach(function(v){var b=button('',function(){location.hash=v[0];},'shortcut'); b.append(el('span','eyebrow',v[2]),el('strong','',v[1]+'  →'));shortcuts.append(b);});
-  overview.append(shortcuts); addView('overview','总览','OVERVIEW',overview);
+  overview.append(shortcuts); addView('overview','Overview','OVERVIEW',overview);
   c.views.forEach(function(v){var section=el('section');v[3].forEach(function(i){if(cards[i])section.append(cards[i]);});addView(v[0],v[1],v[2],section);});
   var appearance=el('section');
   var appearanceCard=el('div','card appearance-card');
-  appearanceCard.innerHTML='<span class="eyebrow">PERSONALIZE YOUR WORKSPACE</span><h2>选择舒适的工作方式</h2><p class="hint">仅影响本浏览器中的面板，不会改变插件配置、消息卡片或其他管理员的界面。</p><div class="field"><label for="panelThemeSelect">界面主题</label><select id="panelThemeSelect"><option value="follow">跟随 AstrBot</option><option value="light">浅色 · 日间</option><option value="dark">深色 · 夜间</option></select></div><label class="compact-row"><span>紧凑布局<small>减小卡片和表格间距，显示更多内容</small></span><input id="panelCompact" type="checkbox"></label><p class="hint" id="panelPreferenceHint" role="status"></p>';
-  appearance.append(appearanceCard);addView('appearance','界面外观','APPEARANCE',appearance);
-  content.append(el('footer','workspace-footer', c.brand+'  /  为每一次连接而设计'));
+  appearanceCard.innerHTML='<span class="eyebrow">PERSONALIZE YOUR WORKSPACE</span><h2>Choose a comfortable workspace</h2><p class="hint">Affects this browser only — it does not change the plugin config, message cards, or the view of other admins.</p><div class="field"><label for="panelThemeSelect">Theme</label><select id="panelThemeSelect"><option value="follow">Follow AstrBot</option><option value="light">Light · day</option><option value="dark">Dark · night</option></select></div><label class="compact-row"><span>Compact layout<small>Tighten card and table spacing to fit more content</small></span><input id="panelCompact" type="checkbox"></label><p class="hint" id="panelPreferenceHint" role="status"></p>';
+  appearance.append(appearanceCard);addView('appearance','Appearance','APPEARANCE',appearance);
+  content.append(el('footer','workspace-footer', c.brand+'  /  BUILT FOR EVERY CONNECTION'));
   stage.append(content);layout.append(rail,stage);
   wrap.replaceWith(layout);
-  var skip=el('a','skip-link','跳到主要内容');skip.href='#main-content';document.body.prepend(skip);
+  var skip=el('a','skip-link','Skip to main content');skip.href='#main-content';document.body.prepend(skip);
   function showView() {
     var key=location.hash.slice(1);if(!Object.prototype.hasOwnProperty.call(views,key)) key='overview';
     Object.keys(views).forEach(function(k){var v=views[k];v.node.hidden=k!==key;v.button.classList.toggle('active',k===key);if(k===key)v.button.setAttribute('aria-current','page');else v.button.removeAttribute('aria-current');});
@@ -93,10 +93,10 @@
     if(themeObserver)themeObserver.disconnect();
     root.dataset.theme=prefs.theme==='follow'?follow:prefs.theme;root.dataset.compact=String(prefs.compact);
     themeSelect.value=prefs.theme;compact.checked=prefs.compact;
-    themeButton.textContent=root.dataset.theme==='dark'?'☀ 浅色':'☾ 深色';themeButton.setAttribute('aria-label',root.dataset.theme==='dark'?'切换为浅色主题':'切换为深色主题');
+    themeButton.textContent=root.dataset.theme==='dark'?'☀ Light':'☾ Dark';themeButton.setAttribute('aria-label',root.dataset.theme==='dark'?'Switch to light theme':'Switch to dark theme');
     if(themeObserver)themeObserver.observe(root,{attributes:true,attributeFilter:['data-theme']});
   }
-  function savePrefs(){applyPrefs();var hint=document.getElementById('panelPreferenceHint');try{localStorage.setItem(storageKey,JSON.stringify(prefs));hint.textContent='偏好已保存到当前浏览器。';}catch(e){hint.textContent='浏览器限制存储，外观仅在本次打开时生效。';}}
+  function savePrefs(){applyPrefs();var hint=document.getElementById('panelPreferenceHint');try{localStorage.setItem(storageKey,JSON.stringify(prefs));hint.textContent='Preferences saved to this browser.';}catch(e){hint.textContent='Storage is blocked — appearance applies to this session only.';}}
   themeSelect.addEventListener('change',function(){prefs.theme=this.value;savePrefs();});compact.addEventListener('change',function(){prefs.compact=this.checked;savePrefs();});
   var params=new URLSearchParams(location.search);var host=params.get('theme')||root.dataset.theme;
   if(host!=='dark'&&host!=='light'){var d=params.get('isDark');try{if(d===null)d=localStorage.getItem('astrbot_plugin_theme_is_dark');}catch(e){}host=d==='true'?'dark':'light';}follow=host;
@@ -105,7 +105,7 @@
   window.addEventListener('storage',function(e){if(e.key==='astrbot_plugin_theme_is_dark'){follow=e.newValue==='true'?'dark':'light';applyPrefs();}});
   // Make every existing table scroll inside its card instead of widening the page.
   document.querySelectorAll('.card > table').forEach(function(table){var scroll=el('div','table-wrap');table.replaceWith(scroll);scroll.append(table);});
-  document.querySelectorAll('.table-wrap').forEach(function(node){node.tabIndex=0;node.setAttribute('aria-label','数据表格，可横向滚动');});
+  document.querySelectorAll('.table-wrap').forEach(function(node){node.tabIndex=0;node.setAttribute('aria-label','Data table, scroll horizontally');});
   var toast=document.getElementById('toast');toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
   document.querySelectorAll('.modal-mask').forEach(function(mask,index){
     var dialog=mask.querySelector('.modal');dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
@@ -124,8 +124,8 @@
   });
   window.PanelUI={
     request:function(promise){
-      if(!pending){failed=false;feedback.hidden=true;}pending++;connection.textContent='正在同步';
-      return promise.then(function(data){sync.textContent='最近读取 · '+new Date().toLocaleTimeString('zh-CN',{hour12:false});return data;},function(error){failed=true;feedback.hidden=false;feedback.textContent='操作未完成：'+(error.message||'请求失败')+'。请重试原操作，或刷新页面重新连接。';throw error;}).finally(function(){pending--;if(!pending){connection.textContent=failed?'连接或操作异常':'面板已连接';connection.classList.toggle('error',failed);}});
+      if(!pending){failed=false;feedback.hidden=true;}pending++;connection.textContent='Syncing';
+      return promise.then(function(data){sync.textContent='Last read · '+new Date().toLocaleTimeString('en-US',{hour12:false});return data;},function(error){failed=true;feedback.hidden=false;feedback.textContent='Action failed: '+(error.message||'Request failed')+'. Please retry the action, or reload the page to reconnect.';throw error;}).finally(function(){pending--;if(!pending){connection.textContent=failed?'Connection or action error':'Panel connected';connection.classList.toggle('error',failed);}});
     }
   };
 })();

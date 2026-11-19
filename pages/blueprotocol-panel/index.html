@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>天刀公告</title>
+<title>Blue Protocol: Star Resonance — Announcements</title>
 <!--
   显式声明桥接 SDK：AstrBot 会把这个 src 重写成带 asset_token 的真实地址。
   整个页面里除这一处外不要再出现那个脚本地址（连注释都不行），否则自动注入会失效。
@@ -14,78 +14,79 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <h1>天刀公告</h1>
-    <span class="pill" id="runPill">加载中…</span>
+    <h1>Blue Protocol: Star Resonance</h1>
+    <span class="pill" id="runPill">Loading…</span>
     <span class="spacer"></span>
-    <button id="btnPickGroup">选择群…</button>
-    <button id="btnReload">刷新</button>
+    <button id="btnPickGroup">Select groups…</button>
+    <button id="btnReload">Refresh</button>
   </div>
 
   <div class="stats" id="stats"></div>
 
   <div class="card">
-    <h2>推送群</h2>
+    <h2>Push targets</h2>
     <p class="hint">
-      勾选要自动推送天刀公告的群（每 5 分钟检查，有更新才推），保存后立即生效，
-      与在群里发「天刀新闻推送 开」等价。
+      Tick the groups that should receive Blue Protocol announcements automatically
+      (checked every 5 minutes, pushed only when something is new). Saving takes effect
+      immediately — same as sending <code>bp push on</code> in the group.
     </p>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:56px">推送</th><th>群</th><th>群号</th>
-          <th>上次推送的公告</th><th class="acts">操作</th>
+          <th style="width:56px">Push</th><th>Group</th><th>Group ID</th>
+          <th>Last pushed announcement</th><th class="acts">Actions</th>
         </tr></thead>
         <tbody id="groupBody"></tbody>
       </table>
     </div>
     <div class="row" style="margin-top:12px">
-      <button id="btnSaveGroups" class="primary">保存推送群</button>
-      <button id="btnPushAll">立刻检查并推送（全部群）</button>
+      <button id="btnSaveGroups" class="primary">Save push targets</button>
+      <button id="btnPushAll">Check &amp; push now (all groups)</button>
       <span class="hint" id="saveHint"></span>
     </div>
   </div>
   <div class="grid2">
     <div class="card">
-      <h2>推送记录</h2>
-      <p class="hint">记录每个群上次推过的公告标题，用来去重。重置后下次检查会重推最新公告。</p>
+      <h2>Push records</h2>
+      <p class="hint">The last announcement pushed to each group, used for deduplication. Reset it and the next check will push the newest announcement again.</p>
       <div class="list" id="recordList"></div>
       <div class="row" style="margin-top:10px">
-        <button id="btnResetAll" class="danger">清空全部记录</button>
+        <button id="btnResetAll" class="danger">Clear all records</button>
         <span class="spacer"></span>
         <span class="hint" id="recordHint"></span>
       </div>
     </div>
     <div class="card">
-      <h2>公告图参数</h2>
+      <h2>Long-image settings</h2>
       <div class="field">
-        <label for="cfgShotEnabled">公告图使用手机网页整页截图</label>
+        <label for="cfgShotEnabled">Render announcements as a phone-sized long image</label>
         <select id="cfgShotEnabled">
-          <option value="1">开启（与手机看官网一致）</option>
-          <option value="0">关闭（用深色卡片图）</option>
+          <option value="1">Enabled (render the announcement body)</option>
+          <option value="0">Disabled (use the dark card image)</option>
         </select>
       </div>
       <div class="field">
-        <label for="cfgShotHeight">截图最大高度（CSS 像素，0 = 不截断）</label>
+        <label for="cfgShotHeight">Maximum height (CSS pixels, 0 = no limit)</label>
         <input type="text" id="cfgShotHeight" placeholder="5000">
       </div>
       <div class="field">
-        <label for="cfgShotQuality">截图 JPEG 质量（1-100）</label>
+        <label for="cfgShotQuality">JPEG quality (1-100)</label>
         <input type="text" id="cfgShotQuality" placeholder="88">
       </div>
       <div class="row">
-        <button id="btnSaveConfig" class="primary">保存参数</button>
+        <button id="btnSaveConfig" class="primary">Save settings</button>
         <span class="hint" id="cfgHint"></span>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <h2>截图缓存</h2>
+    <h2>Image cache</h2>
     <div class="row">
       <span class="hint" id="shotHint"></span>
       <span class="spacer"></span>
-      <button id="btnClearCache">清空摘要缓存</button>
-      <button id="btnClearShots" class="danger">清空截图</button>
+      <button id="btnClearCache">Clear summary cache</button>
+      <button id="btnClearShots" class="danger">Clear images</button>
     </div>
     <div class="gallery" id="gallery"></div>
   </div>
@@ -93,34 +94,34 @@
 
 <div class="modal-mask" id="pickMask" hidden>
   <div class="modal">
-    <h2>选择推送群</h2>
+    <h2>Select push targets</h2>
     <div class="row">
       <div class="field grow">
-        <label for="pickSearch">搜索群名 / 群号</label>
-        <input type="text" id="pickSearch" placeholder="例：天刀 或 339466990">
+        <label for="pickSearch">Search by group name / group ID</label>
+        <input type="text" id="pickSearch" placeholder="e.g. BlueProtocol or 339466990">
       </div>
-      <button id="btnPickRefresh">刷新群列表</button>
+      <button id="btnPickRefresh">Refresh group list</button>
     </div>
     <div class="pick-list" id="pickList"></div>
     <div class="modal-foot">
       <span class="hint" id="pickHint" style="margin-right:auto"></span>
-      <button id="btnPickApply" class="primary">用勾选结果替换名单</button>
-      <button id="pickClose">取消</button>
+      <button id="btnPickApply" class="primary">Replace list with selection</button>
+      <button id="pickClose">Cancel</button>
     </div>
   </div>
 </div>
 
 <div class="modal-mask" id="testMask" hidden>
   <div class="modal">
-    <h2>测试推送</h2>
+    <h2>Test push</h2>
     <p class="hint" id="testTarget"></p>
     <div class="row">
-      <label><input type="checkbox" id="testForce"> 强制重发（忽略「已推送过」的记录）</label>
+      <label><input type="checkbox" id="testForce"> Force re-send (ignore the "already pushed" record)</label>
     </div>
     <div class="modal-foot">
       <span class="hint" id="testResult" style="margin-right:auto"></span>
-      <button id="btnTestRun" class="primary">开始推送</button>
-      <button id="testClose">关闭</button>
+      <button id="btnTestRun" class="primary">Start push</button>
+      <button id="testClose">Close</button>
     </div>
   </div>
 </div>
@@ -133,14 +134,14 @@
     <input id="modalInput" type="text" hidden
       style="width:100%;box-sizing:border-box;padding:6px 8px;margin-top:6px">
     <div class="modal-foot">
-      <button class="primary" id="modalOk">确定</button>
-      <button id="modalCancel">取消</button>
+      <button class="primary" id="modalOk">OK</button>
+      <button id="modalCancel">Cancel</button>
     </div>
   </div>
 </div>
 <!-- Keep the image URL in HTML so AstrBot can rewrite it with an asset token. -->
 <template id="heroArtTemplate">
-  <img class="art-client-icon" src="./wuxia-client-icon.png" width="128" height="128" alt="">
+  <img class="art-client-icon" src="./blueprotocol-icon.png" width="128" height="128" alt="">
 </template>
 <script src="./shell.js"></script>
 <script src="./app.js"></script>

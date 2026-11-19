@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: #141519; }
+html, body { background: #0F1218; }
 body {
   width: 800px;
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   color: #ECEDF2; -webkit-font-smoothing: antialiased;
 }
-.page { width: 800px; background: #141519; padding-bottom: 14px; }
-.brand { display: flex; align-items: center; gap: 12px; padding: 18px 32px; background: linear-gradient(135deg, #1F2A44, #3A4B6E); }
-.brand-tag { font-size: 15px; font-weight: 800; color: #FFC14D; letter-spacing: 2px; }
+.page { width: 800px; background: #0F1218; padding-bottom: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 18px 32px; background: linear-gradient(135deg, #232C48, #3E4C7A); }
+.brand-tag { font-size: 15px; font-weight: 800; color: #FFD76E; letter-spacing: 2px; }
 .brand-name { font-size: 14px; color: rgba(255,255,255,.75); }
 .content { padding: 26px 32px 0; }
 .tag {
-  display: inline-block; font-size: 13px; font-weight: 800; color: #FFC14D;
-  background: rgba(255,193,77,.14); padding: 3px 10px; border-radius: 6px;
+  display: inline-block; font-size: 13px; font-weight: 800; color: #FFD76E;
+  background: rgba(255,215,110,.14); padding: 3px 10px; border-radius: 6px;
 }
 .title { margin-top: 12px; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 1px; line-height: 1.45; word-break: break-word; }
 .meta { margin-top: 10px; font-size: 13px; color: #8D8F9C; }
@@ -30,18 +30,18 @@ body {
 <body>
 <div class="page">
   <div class="brand">
-    <span class="brand-tag">天涯明月刀 · 官方公告</span>
-    <span class="brand-name">wuxia.qq.com</span>
+    <span class="brand-tag">BLUE PROTOCOL · STAR RESONANCE</span>
+    <span class="brand-name">Official Announcements</span>
   </div>
   <div class="content">
     <span class="tag">{{ tag }}</span>
     <div class="title">{{ title }}</div>
-    <div class="meta">公告日期：{{ time }}</div>
+    <div class="meta">Published: {{ time }}</div>
     {% if desc %}<div class="desc">{{ desc }}</div>{% endif %}
   </div>
   <div class="divider"></div>
-  <div class="link">原文链接：{{ url }}</div>
-  <div class="foot">来源：wuxia.qq.com · 天刀官方公告</div>
+  <div class="link">Source: {{ url }}</div>
+  <div class="foot">gm.qq.com · Blue Protocol: Star Resonance — Official Announcements</div>
 </div>
 </body>
 </html>

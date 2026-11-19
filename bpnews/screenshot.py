@@ -1,33 +1,24 @@
 # -*- coding: utf-8 -*-
-"""手机视口网页截图：把公告按「手机访问官网」的样式整页截下来。
+"""公告长图渲染：把公告正文渲染成手机视口的长图。
 
-为什么必须关掉 JavaScript：
-    天刀公告详情页的 head 里会被注入 `if("1" == 1){window.location.href='…';}`，
-    JS 一开就被劫持到活动页，截出来的是别的页面。关掉 JS 后停在公告页，正文和
-    配图（普通 `<img src>`，无懒加载）依然完整渲染。
-    真正的「跳转型公告」（artws 正文为空）由 resolve_target() 主动解析出跳转目标，
-    再以开启 JS 的方式截那个活动页 —— 与手机上点进去看到的一致。
+和「截官网网页」不同，这里是**自己渲染**：《星痕共鸣》的公告正文由
+``searchNews.php`` 接口直接给 HTML（``msg.sContent``），套进
+``templates/article.html`` 后用 Playwright 以 390×844 手机视口整页截图。
+好处是内容完整、不依赖官网那个 JS 渲染的 SPA、也不会被活动页弹窗干扰。
 
-浏览器组件由插件首次使用时自动后台下载（playwright install chromium），
-无需用户手动安装系统软件，依赖已在 requirements.txt 声明。
+浏览器组件由插件首次使用时自动后台下载（``playwright install chromium``，
+约 150MB），无需用户手动安装系统软件，依赖已在 requirements.txt 声明。
 """
 
 from __future__ import annotations
 
 import asyncio
 import hashlib
-import re
 import sys
 import time
 from pathlib import Path
-from urllib.parse import urljoin
 
 from astrbot.api import logger
-
-IPHONE_UA = (
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-)
 
 VIEWPORT_W = 390
 VIEWPORT_H = 844
@@ -37,18 +28,10 @@ MAX_HEIGHT = 5000  # 默认截断高度（CSS px），0 表示不截断
 JPEG_QUALITY = 88
 MAX_BYTES = 2_500_000  # 单图字节预算，超了自动降质/缩放，避免平台拒收
 
-# head 里的整页跳转：if("1" == 1){window.location.href='https://…';}
-_REDIRECT_RE = re.compile(r"window\.location\.href\s*=\s*['\"]([^'\"]+)['\"]")
-# 正文容器，空的说明这条公告没有正文、只是个跳转壳
-_ARTWS_RE = re.compile(r'(?s)<div[^>]*id="artws"[^>]*>(.*?)<dl class="morenews"')
-_BLANK_RE = re.compile(r"<[^>]*>|&nbsp;|\s")
-
-# 腾讯游戏活动页（MILO 框架）未登录时会盖一层扫码登录弹窗，截图前遮掉
-_HIDE_CSS = ".milo-qqLogin, .qqLoginCover, .qqLoginContent { display: none !important; }"
-
 _data_dir: Path | None = None
 _ready: bool | None = None
 _install_started = False
+
 
 def configure(data_dir: Path) -> None:
     """插件初始化时注入数据目录，截图缓存落在其下的 news_shots/。"""
@@ -64,9 +47,9 @@ def _shot_dir() -> Path:
     return d
 
 
-def _shot_paths(url: str) -> tuple[Path, Path]:
+def _shot_paths(key: str) -> tuple[Path, Path]:
     """(完整图路径, 截断图路径)。用文件名区分，省掉额外的标记文件。"""
-    h = hashlib.md5(url.encode()).hexdigest()
+    h = hashlib.md5(str(key).encode()).hexdigest()
     d = _shot_dir()
     return d / f"{h}.jpg", d / f"{h}_t.jpg"
 
@@ -86,7 +69,9 @@ def clean_shots(max_keep: int = 20, max_age: int = 7 * 86400) -> None:
         pass
 
 
-# ---------------- 浏览器组件可用性 ----------------
+# ---------------------------------------------------------------------------
+# 浏览器组件可用性
+# ---------------------------------------------------------------------------
 
 
 async def _probe() -> bool:
@@ -111,6 +96,7 @@ async def _probe() -> bool:
         _ready = False
     return _ready
 
+
 async def _run_install() -> None:
     """后台下载 Playwright chromium（约 150MB，一次性）。"""
     logger.info("开始自动下载 Playwright chromium 浏览器组件（约 150MB）…")
@@ -127,7 +113,7 @@ async def _run_install() -> None:
     global _ready
     _ready = None  # 重新探测
     if await _probe():
-        logger.info("Playwright chromium 下载完成，公告网页截图已可用")
+        logger.info("Playwright chromium 下载完成，公告长图已可用")
     else:
         logger.error("Playwright chromium 下载失败，公告图回退为卡片模式")
 
@@ -146,39 +132,9 @@ def request_install() -> bool:
         return False
 
 
-# ---------------- 跳转型公告解析 ----------------
-
-
-async def resolve_target(url: str) -> tuple[str, bool]:
-    """返回 (真正要截的 URL, 是否需要开启 JS)。
-
-    公告页正文为空且 head 里有整页跳转脚本 → 这是跳转壳，改截跳转目标（活动页要 JS）。
-    其余情况一律截公告页本身，且必须关掉 JS 才不会被那段脚本劫持。
-    """
-    try:
-        import httpx
-
-        async with httpx.AsyncClient(
-            timeout=15, headers={"User-Agent": IPHONE_UA}, follow_redirects=True
-        ) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-        html = resp.content.decode("gbk", errors="replace")
-    except Exception as e:  # noqa: BLE001
-        logger.warning("跳转检测失败，按普通公告页处理: %s", e)
-        return url, False
-
-    m = _REDIRECT_RE.search(html.split("</head>", 1)[0])
-    if not m:
-        return url, False
-    body = _ARTWS_RE.search(html)
-    if body and _BLANK_RE.sub("", body.group(1)):
-        return url, False  # 有正文，跳转脚本不影响阅读
-    target = urljoin(url, m.group(1))
-    logger.info("跳转型公告（正文为空），改截活动页: %s", target)
-    return target, True
-
-# ---------------- 截图 ----------------
+# ---------------------------------------------------------------------------
+# 渲染
+# ---------------------------------------------------------------------------
 
 
 def _shrink_to_budget(path: Path, max_bytes: int) -> None:
@@ -208,7 +164,7 @@ def _shrink_to_budget(path: Path, max_bytes: int) -> None:
 
 
 async def _page_size(page) -> tuple[int, int]:
-    """页面真实宽高（CSS px）。JS 关闭时 evaluate 仍可用（走 Playwright 的隔离世界）。"""
+    """页面真实宽高（CSS px）。"""
     box = await page.evaluate(
         "() => {const d=document.documentElement, b=document.body||{};"
         "return [Math.max(d.scrollWidth, b.scrollWidth||0),"
@@ -216,19 +172,33 @@ async def _page_size(page) -> tuple[int, int]:
     )
     return int(box[0]), int(box[1])
 
-async def shot_mobile(
-    url: str,
+
+async def _wait_images(page, timeout_ms: int = 6000) -> None:
+    """等封面图等位图解码完（decode 失败也不阻塞截图）。"""
+    try:
+        await page.wait_for_function(
+            "() => {const imgs=Array.from(document.images||[]);"
+            "return imgs.every(i=>i.complete);}",
+            timeout=timeout_ms,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.debug("等待图片加载超时（不影响截图）: %s", e)
+
+
+async def shot_article(
+    html: str,
+    key: str,
     max_height: int = MAX_HEIGHT,
     quality: int = JPEG_QUALITY,
     max_bytes: int = MAX_BYTES,
 ) -> tuple[str, bool]:
-    """手机视口整页截图，返回 (jpg 路径, 是否因过长被截断)。
+    """把一段 HTML 渲染成手机视口长图，返回 (jpg 路径, 是否因过长被截断)。
 
-    按原始 URL 做文件缓存：同一条公告推多个群只截一次。
+    按 key（通常是公告 id）做文件缓存：同一条公告推多个群只渲染一次。
     浏览器组件未就绪时触发后台下载并抛 RuntimeError("DOWNLOADING")，
     调用方应回退卡片模式并提示稍后自动生效。
     """
-    full, trunc = _shot_paths(url)
+    full, trunc = _shot_paths(key)
     for p, was_truncated in ((full, False), (trunc, True)):
         if p.exists() and p.stat().st_size > 0:
             return str(p), was_truncated
@@ -236,7 +206,6 @@ async def shot_mobile(
         request_install()
         raise RuntimeError("DOWNLOADING")
 
-    target, need_js = await resolve_target(url)
     from playwright.async_api import async_playwright
 
     pw = await async_playwright().start()
@@ -246,38 +215,21 @@ async def shot_mobile(
         ctx = await browser.new_context(
             viewport={"width": VIEWPORT_W, "height": VIEWPORT_H},
             device_scale_factor=DEVICE_SCALE,
-            user_agent=IPHONE_UA,
+            user_agent=(
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+                "Mobile/15E148 Safari/604.1"
+            ),
             is_mobile=True,
             has_touch=True,
             locale="zh-CN",
-            java_script_enabled=need_js,
         )
         page = await ctx.new_page()
-        try:
-            await page.goto(target, wait_until="load", timeout=60000)
-        except Exception:  # noqa: BLE001
-            await page.goto(target, wait_until="domcontentloaded", timeout=60000)
-        await page.wait_for_timeout(1800)  # 等字体与正文配图落地
-        if need_js:
-            # 只有活动页需要（公告页没有登录弹窗）。用 evaluate 而非 add_style_tag：
-            # 后者会等 <style> 的 load 事件，JS 关闭的页面上会一直挂住。
-            try:
-                await page.evaluate(
-                    "css => {const s=document.createElement('style');"
-                    "s.textContent=css;document.head.appendChild(s);}",
-                    _HIDE_CSS,
-                )
-                await page.wait_for_timeout(300)
-            except Exception as e:  # noqa: BLE001
-                logger.debug("注入遮罩样式失败（不影响截图）: %s", e)
+        await page.set_content(html, wait_until="domcontentloaded", timeout=30000)
+        await _wait_images(page)
+        await page.wait_for_timeout(400)  # 等字体与排版落定
 
         width, height = await _page_size(page)
-        if width > VIEWPORT_W + 8:
-            # 活动页之类没有 viewport meta 的 PC 版排版：把视口拉宽到页面真实宽度再截
-            await page.set_viewport_size({"width": width, "height": VIEWPORT_H})
-            await page.wait_for_timeout(800)
-            width, height = await _page_size(page)
-
         truncated = max_height > 0 and height > max_height
         out = trunc if truncated else full
         await page.screenshot(
@@ -304,6 +256,3 @@ async def shot_mobile(
             except Exception:  # noqa: BLE001
                 pass
         await pw.stop()
-
-
-

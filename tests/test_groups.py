@@ -11,7 +11,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from wxnews.groups import (  # noqa: E402
+from bpnews.groups import (  # noqa: E402
     GROUP_MSG_TYPE,
     SOURCE_API,
     SOURCE_EVENT,
@@ -245,11 +245,11 @@ def test_label_falls_back_to_group_id_lookup():
     """umo 拼法不同（配置的默认平台 vs 事件的实例 id）时也要认得出名字。"""
     with tempfile.TemporaryDirectory() as tmp:
         r = _resolver(tmp)
-        r.remember("napcat:GroupMessage:1001", group_name="天刀交流群")
+        r.remember("napcat:GroupMessage:1001", group_name="星痕共鸣交流群")
         # 精确命中
-        assert r.label("napcat:GroupMessage:1001") == "天刀交流群（1001）"
+        assert r.label("napcat:GroupMessage:1001") == "星痕共鸣交流群（1001）"
         # 同一个群、换了平台前缀 → 靠「群号 + 平台兜底」找到名字
-        assert r.label("aiocqhttp:GroupMessage:1001") == "天刀交流群（1001）"
+        assert r.label("aiocqhttp:GroupMessage:1001") == "星痕共鸣交流群（1001）"
         # 完全不认识的群还是「群 群号」
         assert r.label("aiocqhttp:GroupMessage:9999") == "群 9999"
         # 私聊不受影响
@@ -258,11 +258,11 @@ def test_label_falls_back_to_group_id_lookup():
         r.remember("telegram:GroupMessage:1001", group_name="电报群")
         assert r.label("aiocqhttp:GroupMessage:1001") == "群 1001"
         assert r.label("telegram:GroupMessage:1001") == "电报群（1001）"
-        assert r.label("napcat:GroupMessage:1001") == "天刀交流群（1001）"
+        assert r.label("napcat:GroupMessage:1001") == "星痕共鸣交流群（1001）"
         # find_name 默认不跨平台，显式放开时才用唯一候选兜底
         assert r.find_name("aiocqhttp", "1001") == ""
         assert r.find_name("aiocqhttp", "1001", allow_any_platform=True) == ""
-        assert r.find_name("napcat", "1001") == "天刀交流群"
+        assert r.find_name("napcat", "1001") == "星痕共鸣交流群"
 
 
 def main():

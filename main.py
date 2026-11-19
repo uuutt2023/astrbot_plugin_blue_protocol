@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""天刀公告插件（AstrBot）。作者：lianzy
+"""Blue Protocol: Star Resonance 官方公告插件（AstrBot）。
 
-天刀公告列表 / 天刀最新公告 / 天刀最新公告改（按群去重）/ 天刀重置公告推送，
-以及「天刀新闻推送 开/关/状态/测试」定时自动推送（每 5 分钟检查）。
+《蓝色协议：星痕共鸣》官方公告查询与推送：公告列表（支持分页与分类）、最新公告
+（正文摘要 + 手机长图）、按群去重、定时自动推送（每 5 分钟检查，有更新自动推送），
+以及一个 Web 面板用来按群名管理推送群。
 
-所有指令统一以「天刀」开头，避免与其它插件的裸词指令冲突。
+指令统一用英文，前缀 ``bp``（也认 ``blue protocol`` / ``blueprotocol``），
+避免与其它插件的裸词指令冲突。
 """
 
 import asyncio
@@ -19,43 +21,40 @@ _PLUGIN_ROOT = Path(__file__).resolve().parent
 if str(_PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(_PLUGIN_ROOT))
 
-_TEMPLATE_DIR = _PLUGIN_ROOT / "templates"
-
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-from wxnews import screenshot
-from wxnews.groups import (
+from bpnews import api, screenshot
+from bpnews.api import TAG_ALL, resolve_tag, tag_display_name
+from bpnews.groups import (
     SOURCE_API,
     GroupNameResolver,
     parse_group_info,
     parse_group_list,
 )
-from wxnews.page import NewsPageController
+from bpnews.page import NewsPageController
+from bpnews.render import card_data, render_article
 
-NEWS_URL = "http://wuxia.qq.com/webplat/info/news_version3/5012/5013/5014/5016/m3485/list_1.shtml"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+PLUGIN_NAME = "astrbot_plugin_blue_protocol"
+GAME_NAME = "Blue Protocol: Star Resonance"
 
-# 列表项：标签 / 链接 / 标题 / 时间
-_ITEM_RE = re.compile(
-    r'<li class="news-st">.*?<a class="cltag"[^>]*>.*?<i>(.*?)</i>.*?</a>.*?'
-    r'<a class="cltit"[^>]*href="([^"]*)"[^>]*>(.*?)</a>.*?'
-    r'<span class="cltime">(.*?)</span>.*?</li>',
-    re.S,
+# 指令前缀：bp / blue protocol / blueprotocol 都认
+_PREFIX = r"(?:bp|blue\s*protocol)"
+# 给帮助文案用的人话前缀
+_PREFIX_TEXT = "bp"
+# 列表指令的分类参数（英文别名）
+_CATEGORIES = (
+    r"all|latest|notice|announcement|announcements|ann|news|event|events|activity"
 )
-_HTML_TAG_RE = re.compile(r"<[^>]*>")
-# 正文容器到「相关新闻」之间即全文；不能用非贪婪 </div>，正文里有嵌套 div 会被截断
-_CONTENT_RE = re.compile(r'(?s)<div[^>]*class="artws"[^>]*>(.*?)<dl class="morenews"')
-_BLOCK_RE = re.compile(r'(?s)<div[^>]*class="fabric-editor-block-mark[^"]*"[^>]*>(.*?)</div>')
-_P_RE = re.compile(r"(?s)<p[^>]*>(.*?)</p>")
 
-T_LIST = r"^天刀公告列表$"
-T_LATEST = r"^天刀最新公告$"
-T_LATEST_DEDUP = r"^天刀最新公告改$"
-T_PUSH = r"^天刀新闻推送[\s:：]*(开|关|状态|测试)?$"
-T_RESET = r"^天刀重置公告推送$"
+T_LIST = rf"^{_PREFIX}\s+list(?:\s+({_CATEGORIES}))?(?:\s+(\d+))?\s*$"
+T_LATEST = rf"^{_PREFIX}\s+latest\s*$"
+T_LATEST_DEDUP = rf"^{_PREFIX}\s+latest\s+dedup\s*$"
+T_PUSH = rf"^{_PREFIX}\s+push(?:\s+(on|off|status|test))?\s*$"
+T_RESET = rf"^{_PREFIX}\s+reset\s*$"
+T_HELP = rf"^{_PREFIX}\s+help\s*$"
 
 _RE_CACHE: dict[str, re.Pattern] = {}
 
@@ -65,7 +64,9 @@ DATA_DIR: Path | None = None
 def _data_dir() -> Path:
     global DATA_DIR
     if DATA_DIR is None:
-        DATA_DIR = Path(get_astrbot_data_path()) / "plugin_data" / "astrbot_plugin_wuxianews"
+        DATA_DIR = (
+            Path(get_astrbot_data_path()) / "plugin_data" / PLUGIN_NAME
+        )
         DATA_DIR.mkdir(parents=True, exist_ok=True)
     return DATA_DIR
 
@@ -83,82 +84,37 @@ class _RateLimit:
         return False
 
 
-async def _http_get(url: str, timeout: float = 15) -> bytes:
-    import httpx
-
-    async with httpx.AsyncClient(
-        timeout=timeout, headers={"User-Agent": UA}, follow_redirects=True
-    ) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.content
+# ---------------------------------------------------------------------------
+# 数据获取
+# ---------------------------------------------------------------------------
 
 
-def _decode_gbk(raw: bytes) -> str:
-    return raw.decode("gbk", errors="replace")
-
-
-def _strip_html(s: str) -> str:
-    s = _HTML_TAG_RE.sub("", s)
-    s = s.replace("&nbsp;", " ").replace("&mdash;", "—")
-    return " ".join(s.split()).strip()
-
-
-async def fetch_news_list() -> list[dict]:
-    """公告列表（按时间倒序）。"""
-    raw = await _http_get(NEWS_URL)
-    html = _decode_gbk(raw)
-    items = []
-    for m in _ITEM_RE.findall(html):
-        tag, href, title, t = m
-        title = _strip_html(title).replace("<br>", " ").replace("\n", " ")
-        if not title:
-            continue
-        items.append(
-            {
-                "tag": _strip_html(tag),
-                "title": title,
-                "url": ("https://wuxia.qq.com" + href) if not href.startswith("http") else href,
-                "time": t.strip(),
-            }
-        )
-    items.sort(key=lambda x: x["time"], reverse=True)
+async def fetch_news_list(
+    page: int = 1, page_size: int = 10, tag_id: str = TAG_ALL
+) -> tuple[list[dict], dict]:
+    """公告列表（按时间倒序）。返回 (条目, 分页信息)。"""
+    items, info = await api.fetch_list(page=page, page_size=page_size, tag_id=tag_id)
     if not items:
-        raise RuntimeError("未找到公告数据（页面结构可能变化）")
-    return items
+        raise RuntimeError("no announcement data found (the API shape may have changed)")
+    return items, info
 
 
-def pick_latest(items: list[dict]) -> dict:
-    """优先取「公告」类目，否则取列表第一条。"""
-    for it in items:
-        if "公告" in it["tag"]:
-            return it
-    return items[0]
+async def fetch_detail(news_id: str) -> dict:
+    """公告详情（含正文 HTML）。"""
+    detail = await api.fetch_detail(news_id)
+    if not detail:
+        raise RuntimeError("announcement detail is empty")
+    return detail
 
 
-async def fetch_summary(url: str) -> str:
-    """公告详情页首段有意义正文（跳过「亲爱的少侠」等称呼段，200 字内）。"""
-    try:
-        raw = await _http_get(url)
-        html = _decode_gbk(raw)
-        blocks = _BLOCK_RE.findall(html)
-        if not blocks:
-            m = _CONTENT_RE.search(html)
-            if m:
-                blocks = _P_RE.findall(m.group(1))
-        for b in blocks:
-            text = _strip_html(b)
-            if not text:
-                continue
-            head = text[:10]
-            if any(k in head for k in ("亲爱的", "尊敬的", "敬爱的", "各位", "您好", "大家好")):
-                continue  # 称呼段无意义
-            if len(text) < 20:
-                continue  # 过短噪声
-            return text[:200]
-        return ""
-    except Exception:  # noqa: BLE001
-        return ""
+def summarize_detail(detail: dict) -> str:
+    """正文摘要（跳过「冒险者，您好！」这类招呼语）。"""
+    return api.summarize(detail.get("content") or "")
+
+
+# ---------------------------------------------------------------------------
+# 推送去重记录
+# ---------------------------------------------------------------------------
 
 
 def _load_records() -> dict:
@@ -172,7 +128,9 @@ def _load_records() -> dict:
 def _save_records(records: dict) -> None:
     try:
         p = _data_dir() / "push_record.json"
-        p.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+        p.write_text(
+            json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     except OSError:
         pass
 
@@ -222,20 +180,23 @@ def _clean_summary_cache(cache: dict) -> None:
         cache.pop(k, None)
 
 
-async def fetch_summary_cached(url: str) -> str:
-    """带缓存（24h）的摘要抓取：同一公告推多个群时只抓一次详情页。"""
+async def fetch_summary_cached(detail: dict) -> str:
+    """带缓存（24h）的摘要：同一公告推多个群时只解析一次。"""
+    news_id = str(detail.get("news_id") or "")
+    if not news_id:
+        return summarize_detail(detail)
     cache = _load_summary_cache()
-    entry = cache.get(url)
+    entry = cache.get(news_id)
     if entry and time.time() - entry.get("t", 0) < 86400:
         return entry.get("s", "")
-    s = await fetch_summary(url)
-    cache[url] = {"t": time.time(), "s": s}
+    s = summarize_detail(detail)
+    cache[news_id] = {"t": time.time(), "s": s}
     _clean_summary_cache(cache)
     _save_summary_cache(cache)
     return s
 
 
-class WuxiaNewsPlugin(Star):
+class BlueProtocolNewsPlugin(Star):
     _GROUP_MSG_TYPE = "GroupMessage"
 
     def __init__(self, context: Context, config: AstrBotConfig):
@@ -252,7 +213,7 @@ class WuxiaNewsPlugin(Star):
         self._group_name_tasks: dict[str, asyncio.Task] = {}
         self.page = NewsPageController(context, self, data_dir=self.data_dir)
         self.page.register_routes()
-        logger.info("天刀公告插件初始化完成")
+        logger.info("Blue Protocol: Star Resonance announcement plugin initialized")
 
     # ---------------- 工具 ----------------
 
@@ -297,25 +258,6 @@ class WuxiaNewsPlugin(Star):
         except Exception:  # noqa: BLE001
             return False
 
-    def _platform_names(self) -> list[str]:
-        for get in (
-            lambda: self.context.platform_manager.platform_insts,
-            lambda: self.context.get_platform_insts(),
-        ):
-            try:
-                insts = get()
-            except Exception:  # noqa: BLE001
-                continue
-            names = []
-            for p in insts or []:
-                try:
-                    names.append(str(p.meta().name))
-                except Exception:  # noqa: BLE001
-                    continue
-            if names:
-                return names
-        return []
-
     def _platform_instances(self) -> list[tuple]:
         """当前已加载平台的 (实例id, 适配器类型名) 列表；取不到返回空。
 
@@ -348,7 +290,11 @@ class WuxiaNewsPlugin(Star):
         配置填了就用它（是类型名时映射到同类型实例）；留空则优先 aiocqhttp 类型的实例；
         都探不到才回落 aiocqhttp（与旧行为一致）。
         """
-        configured = str(self.config.get("default_platform", "") or "").strip() if hasattr(self.config, "get") else ""
+        configured = (
+            str(self.config.get("default_platform", "") or "").strip()
+            if hasattr(self.config, "get")
+            else ""
+        )
         insts = self._platform_instances()
         ids = [pid for pid, _ in insts]
         if configured:
@@ -551,141 +497,224 @@ class WuxiaNewsPlugin(Star):
 
     @filter.regex(T_LIST)
     async def list_cmd(self, event: AstrMessageEvent):
-        '''天刀公告列表：最近 10 条天刀公告'''
+        '''bp list [category] [page]: announcement list (category: notice/news/event/all)'''
         if not self._limit.ok(self._group_key(event)):
-            yield event.plain_result("查询太频繁，请稍后再试")
+            yield event.plain_result("Too many requests — please try again in a moment.")
             return
         try:
-            items = await fetch_news_list()
+            tag_name, page = self._parse_list_args(event)
+            tag_id = resolve_tag(tag_name) or TAG_ALL
+            page = max(1, page)
+            size = int(self.config.get("list_page_size", 10) or 10)
+            items, info = await fetch_news_list(page=page, page_size=size, tag_id=tag_id)
             if not items:
-                yield event.plain_result("暂无公告信息")
+                yield event.plain_result("No announcements found.")
                 return
-            lines = ["天刀公告列表：\n"]
-            for i, it in enumerate(items[:10]):
-                lines.append(f"{i + 1}. [{it['tag']}] {it['title']}\n   {it['time']}\n   {it['url']}")
-            if len(items) > 10:
-                lines.append(f"... 共 {len(items)} 条公告，仅显示前 10 条")
+            title = f"{GAME_NAME} — Announcements"
+            label = tag_display_name(tag_id)
+            if tag_id != TAG_ALL and label:
+                title += f" ({label})"
+            title += f" | Page {info.get('page', page)}/{info.get('totalpage', 1)}\n"
+            lines = [title]
+            for i, it in enumerate(items):
+                tag = f"[{it['tag']}] " if it.get("tag") else ""
+                lines.append(
+                    f"{i + 1}. {tag}{it['title']}\n   {it['time']}\n   {it['url']}"
+                )
+            total = int(info.get("total", len(items)))
+            if info.get("totalpage", 1) > 1:
+                lines.append(
+                    f"... {total} announcements in total, page {info.get('page', page)}"
+                    f" of {info.get('totalpage', 1)} ({info.get('pagesize', size)} per page)"
+                )
             yield event.plain_result("\n\n".join(lines))
         except Exception as e:  # noqa: BLE001
-            yield event.plain_result(f"获取失败：{e}")
+            yield event.plain_result(f"Failed to fetch announcements: {e}")
+
+    @staticmethod
+    def _parse_list_args(event: AstrMessageEvent) -> tuple[str, int]:
+        """从「bp list notice 2」里拆出 (分类, 页码)。"""
+        rx = _RE_CACHE.get(T_LIST) or re.compile(T_LIST)
+        m = rx.match(event.message_str.strip())
+        tag_name = ""
+        page = 1
+        if m:
+            if m.group(1):
+                tag_name = m.group(1)
+            if m.group(2):
+                try:
+                    page = int(m.group(2))
+                except ValueError:
+                    page = 1
+        return tag_name, page
 
     @filter.regex(T_LATEST)
     async def latest_cmd(self, event: AstrMessageEvent):
-        '''天刀最新公告：最新一条 + 内容摘要'''
+        '''bp latest: the newest announcement — summary text + phone-sized long image'''
         if not self._limit.ok(self._group_key(event)):
-            yield event.plain_result("查询太频繁，请稍后再试")
+            yield event.plain_result("Too many requests — please try again in a moment.")
             return
         for r in await self._latest(event, force=True):
             yield r
 
     @filter.regex(T_LATEST_DEDUP)
     async def latest_dedup_cmd(self, event: AstrMessageEvent):
-        '''天刀最新公告改：有新公告才返回（按群去重）'''
+        '''bp latest dedup: only replies when there is a new announcement (per-group dedup)'''
         if not self._limit.ok(self._group_key(event)):
-            yield event.plain_result("查询太频繁，请稍后再试")
+            yield event.plain_result("Too many requests — please try again in a moment.")
             return
         for r in await self._latest(event, force=False):
             yield r
+
+    @filter.regex(T_HELP)
+    async def help_cmd(self, event: AstrMessageEvent):
+        '''bp help: command usage'''
+        p = _PREFIX_TEXT
+        yield event.plain_result(
+            f"{GAME_NAME} announcement bot\n\n"
+            f"{p} list [category] [page]\n"
+            f"    announcement list\n"
+            f"    category: all | notice | news | event   (default: all)\n"
+            f"    page: page number (default: 1)\n\n"
+            f"{p} latest\n"
+            f"    newest announcement — summary text + long image\n\n"
+            f"{p} latest dedup\n"
+            f"    newest announcement, only when there is something new\n\n"
+            f"{p} push on | off | status | test\n"
+            f"    auto-push for this group (on / off / test need admin)\n\n"
+            f"{p} reset\n"
+            f"    clear this group's push record (admin)\n\n"
+            f"Prefix aliases: bp / blue protocol / blueprotocol"
+        )
 
     async def _latest(self, event: AstrMessageEvent, force: bool) -> list:
         key = self._group_id(event) or f"session:{event.unified_msg_origin}"
         results = []
         try:
-            items = await fetch_news_list()
+            items, _ = await fetch_news_list(page=1, page_size=5)
             if not items:
                 if force:
-                    results.append(event.plain_result("暂无公告信息"))
+                    results.append(event.plain_result("No announcements found."))
                 return results
-            it = pick_latest(items)
+            it = items[0]
             if not force and last_pushed(key) == it["title"]:
                 return results
             mark_pushed(key, it["title"])
-            summary = await fetch_summary(it["url"])
-            text = (
-                f"最新公告：\n\n类型：{it['tag']}\n标题：{it['title']}\n"
-                f"日期：{it['time']}\n链接：{it['url']}"
-            )
-            if summary:
-                text += f"\n\n{summary}"
-            img, hint = await self._news_image(it, summary)
+            detail = await self._detail_of(it)
+            summary = await fetch_summary_cached(detail)
+            text = self._news_text(it, summary)
+            img, hint = await self._news_image(it, detail, summary)
             results.append(event.plain_result(text + hint))
             if img:
                 results.append(event.image_result(img))
         except Exception as e:  # noqa: BLE001
-            logger.warning("最新公告获取失败: %s", e)
+            logger.warning("latest announcement fetch failed: %s", e)
             if force:
-                results.append(event.plain_result(f"获取失败：{e}"))
+                results.append(event.plain_result(f"Failed to fetch announcements: {e}"))
         return results
+
+    @staticmethod
+    async def _detail_of(item: dict) -> dict:
+        """取公告详情；失败时退回列表项（至少还能出标题/时间）。"""
+        news_id = str(item.get("news_id") or "")
+        if not news_id:
+            return {}
+        try:
+            return await fetch_detail(news_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("announcement detail fetch failed %s: %s", news_id, e)
+            return dict(item)
+
+    @staticmethod
+    def _news_text(it: dict, summary: str) -> str:
+        tag = f"Category: {it['tag']}\n" if it.get("tag") else ""
+        text = (
+            f"Latest announcement:\n\n{tag}Title: {it['title']}\n"
+            f"Date: {it['time']}\nLink: {it['url']}"
+        )
+        if summary:
+            text += f"\n\n{summary}"
+        return text
 
     @filter.regex(T_PUSH)
     async def push_cmd(self, event: AstrMessageEvent):
-        '''天刀新闻推送 开/关/状态/测试：本群开启后每 5 分钟检查，有更新自动推送（开/关/测试需管理员）'''
+        '''bp push on|off|status|test: toggle auto-push for this group (checked every 5 minutes)'''
         arg = self._cap(T_PUSH, event)
         if not self._group_id(event):
-            yield event.plain_result("该命令仅支持在群聊中使用")
+            yield event.plain_result("This command only works in group chats.")
             return
         groups = list(self.config.get("news_groups", []) or [])
         umo = self._norm_umo(self._umo_of(event))
-        if arg == "开":
+        if arg == "on":
             if not self._is_admin(event):
-                yield event.plain_result("需要管理员权限")
+                yield event.plain_result("Administrator permission required.")
                 return
             if umo not in groups:
                 groups.append(umo)
             self.config["news_groups"] = groups
-            self.config.save_config()
-            yield event.plain_result("已开启本群天刀公告自动推送（每 5 分钟检查一次，有更新实时推送）")
-        elif arg == "关":
+            await self.save_config_now()
+            yield event.plain_result(
+                f"Auto-push is now ON for this group "
+                f"({GAME_NAME} announcements, checked every 5 minutes)."
+            )
+        elif arg == "off":
             if not self._is_admin(event):
-                yield event.plain_result("需要管理员权限")
+                yield event.plain_result("Administrator permission required.")
                 return
             self.config["news_groups"] = [g for g in groups if g != umo]
-            self.config.save_config()
-            yield event.plain_result("已关闭本群天刀公告自动推送")
-        elif arg == "状态":
+            await self.save_config_now()
+            yield event.plain_result("Auto-push is now OFF for this group.")
+        elif arg == "status":
             on = umo in groups
             yield event.plain_result(
-                f"本群天刀公告推送：{'已开启（每 5 分钟检查）' if on else '已关闭'}\n"
-                "开启后由机器人自动推送，无需手动查询"
+                f"Auto-push for this group: "
+                f"{'ON (checked every 5 minutes)' if on else 'OFF'}\n"
+                "When ON, the bot pushes new announcements automatically."
             )
-        elif arg == "测试":
+        elif arg == "test":
             if not self._is_admin(event):
-                yield event.plain_result("需要管理员权限")
+                yield event.plain_result("Administrator permission required.")
                 return
             for r in await self._latest(event, force=True):
                 yield r
         else:
-            yield event.plain_result("用法：天刀新闻推送 开 / 关 / 状态 / 测试")
+            yield event.plain_result(
+                f"Usage: {_PREFIX_TEXT} push on | off | status | test"
+            )
 
     def _umo_of(self, event: AstrMessageEvent) -> str:
         return event.unified_msg_origin
 
     @filter.regex(T_RESET)
     async def reset_cmd(self, event: AstrMessageEvent):
-        '''天刀重置公告推送：清空本群推送记录（需管理员）'''
+        '''bp reset: clear this group's push record (admin only)'''
         if not self._group_id(event):
-            yield event.plain_result("该命令仅支持在群聊中使用")
+            yield event.plain_result("This command only works in group chats.")
             return
         if not self._is_admin(event):
-            yield event.plain_result("需要管理员权限")
+            yield event.plain_result("Administrator permission required.")
             return
         key = self._group_id(event)
         clear_pushed(key)
-        yield event.plain_result("已重置本群的公告推送记录")
+        yield event.plain_result("This group's push record has been reset.")
 
-    # ---------------- 公告图（手机网页截图，失败回退卡片） ----------------
+    # ---------------- 公告长图（自渲染正文，失败回退卡片） ----------------
 
-    async def _news_image(self, it: dict, summary: str) -> tuple[str | None, str]:
+    async def _news_image(
+        self, it: dict, detail: dict, summary: str
+    ) -> tuple[str | None, str]:
         """返回 (图片路径/URL, 追加到文字消息的提示)。
 
-        首选「手机 UA + 手机视口打开该网址」的整页截图，与手机看官网一致；
-        Playwright 不可用或截图失败时回退到 templates/news.html 卡片图。
+        首选「按手机视口渲染公告正文」的整页长图；Playwright 不可用或渲染失败时
+        回退到 templates/card.html 的卡片图。
         """
         note = ""
         if self.config.get("shot_enabled", True):
             try:
-                path, truncated = await screenshot.shot_mobile(
-                    it["url"],
+                html = render_article(detail or it)
+                path, truncated = await screenshot.shot_article(
+                    html,
+                    str(it.get("news_id") or it.get("url") or it.get("title")),
                     max_height=int(
                         self.config.get("shot_max_height", screenshot.MAX_HEIGHT)
                     ),
@@ -693,20 +722,20 @@ class WuxiaNewsPlugin(Star):
                 )
                 screenshot.clean_shots()
                 if truncated:
-                    note = "\n\n（公告较长，图片仅截取前部分，完整内容见链接）"
+                    note = "\n\n(Announcement is long — the image shows only the first part. See the link for the full text.)"
                 return path, note
             except RuntimeError as e:
                 if str(e) == "DOWNLOADING":
-                    logger.info("浏览器组件下载中，本次先用卡片图")
-                    note = "\n\n（浏览器组件正在后台下载，稍后公告图会自动切换为网页截图）"
+                    logger.info("browser component is downloading, falling back to the card image")
+                    note = "\n\n(The browser component is downloading in the background — the long image will be used once it is ready.)"
                 else:
-                    logger.warning("公告网页截图失败: %s", e)
+                    logger.warning("announcement long image render failed: %s", e)
             except Exception as e:  # noqa: BLE001
-                logger.warning("公告网页截图失败: %s", e)
+                logger.warning("announcement long image render failed: %s", e)
         try:
             return await self._render_card(it, summary), note
         except Exception as e:  # noqa: BLE001
-            logger.warning("公告卡片生成失败: %s", e)
+            logger.warning("announcement card render failed: %s", e)
             return None, note
 
     # ---------------- 公告卡片（html_render 渲染，深色风格，截图不可用时的兜底） ----------------
@@ -731,7 +760,7 @@ class WuxiaNewsPlugin(Star):
     def _card_clip(self, it: dict, summary: str) -> dict:
         """估算卡片内容高度并构造 clip（t2i 端点固定输出 800x720，需按内容裁剪）。
 
-        与 templates/news.html 版式逐项对应（2026-09-01 实测标定）：
+        与 templates/card.html 版式逐项对应：
         brand 57 + content pad 26 + tag 24 + title(margin12+行40.6) + meta(10+18)
         + desc(margin18+行30.4) + divider 21 + link 63 + foot 33 + page pad 14。
         底部留 20px 同色余量（深色底不可见），宁多勿少防切字。
@@ -744,19 +773,16 @@ class WuxiaNewsPlugin(Star):
         return {"x": 0, "y": 0, "width": 800, "height": min(int(h) + 20, 720)}
 
     async def _render_card(self, it: dict, summary: str) -> str:
-        """渲染公告卡片图片（对齐饰品排行深色风格），返回图片 URL。"""
-        tmpl = _TEMPLATE_DIR / "news.html"
-        if not tmpl.is_file():
-            raise RuntimeError(f"模板缺失：{tmpl}。插件目录不完整，请重新安装完整 zip")
+        """渲染公告卡片图片（深色风格），返回图片 URL。"""
+        from bpnews.render import CARD_TEMPLATE
+
+        if not CARD_TEMPLATE.is_file():
+            raise RuntimeError(
+                f"template missing: {CARD_TEMPLATE}. The plugin folder is incomplete, please reinstall the full zip"
+            )
         return await self.html_render(
-            tmpl.read_text(encoding="utf-8"),
-            {
-                "tag": it["tag"],
-                "title": it["title"],
-                "time": it["time"],
-                "url": it["url"],
-                "desc": summary,
-            },
+            CARD_TEMPLATE.read_text(encoding="utf-8"),
+            card_data(it, summary),
             options={"type": "png", "clip": self._card_clip(it, summary)},
         )
 
@@ -772,7 +798,7 @@ class WuxiaNewsPlugin(Star):
             try:
                 await self._tick()
             except Exception as e:  # noqa: BLE001
-                logger.warning("定时任务异常: %s", e)
+                logger.warning("scheduler error: %s", e)
             await asyncio.sleep(30)
 
     async def _tick(self):
@@ -798,27 +824,27 @@ class WuxiaNewsPlugin(Star):
                 "title": "",
                 "pushed": [],
                 "skipped": [],
-                "message": "还没有设置推送群，先在面板里勾选或群里发「天刀新闻推送 开」",
+                "message": "No push targets yet — pick groups in the panel, or send \"bp push on\" in a group.",
             }
         try:
-            items = await fetch_news_list()
+            items, _ = await fetch_news_list(page=1, page_size=5)
             if not items:
                 return {
                     "reason": "no_list",
                     "title": "",
                     "pushed": [],
                     "skipped": [],
-                    "message": "公告列表为空（数据源没返回内容）",
+                    "message": "The announcement list came back empty (the data source returned nothing).",
                 }
-            it = pick_latest(items)
+            it = items[0]
         except Exception as e:  # noqa: BLE001
-            logger.warning("定时公告列表获取失败: %s", e)
+            logger.warning("scheduled announcement list fetch failed: %s", e)
             return {
                 "reason": "fetch_failed",
                 "title": "",
                 "pushed": [],
                 "skipped": [],
-                "message": f"公告列表获取失败：{e}",
+                "message": f"Failed to fetch the announcement list: {e}",
             }
 
         need = (
@@ -833,18 +859,14 @@ class WuxiaNewsPlugin(Star):
                 "title": it["title"],
                 "pushed": [],
                 "skipped": skipped,
-                "message": f"最新公告已经推过了：{it['title']}",
+                "message": f"The latest announcement was already pushed: {it['title']}",
             }
 
-        # 摘要/截图只生成一次（内部有缓存，多群共用同一文件）
-        summary = await fetch_summary_cached(it["url"])
-        text = (
-            f"最新公告：\n\n类型：{it['tag']}\n标题：{it['title']}\n"
-            f"日期：{it['time']}\n链接：{it['url']}"
-        )
-        if summary:
-            text += f"\n\n{summary}"
-        img, hint = await self._news_image(it, summary)
+        # 摘要/长图只生成一次（内部有缓存，多群共用同一文件）
+        detail = await self._detail_of(it)
+        summary = await fetch_summary_cached(detail)
+        text = self._news_text(it, summary)
+        img, hint = await self._news_image(it, detail, summary)
         text += hint
         pushed: list[str] = []
         for umo in need:
@@ -855,10 +877,10 @@ class WuxiaNewsPlugin(Star):
                     await self._send_img_to(umo, img)
                 pushed.append(umo)
             except Exception as e:  # noqa: BLE001
-                logger.warning("定时公告推送失败 %s: %s", umo, e)
-        message = f"已推送「{it['title']}」到 {len(pushed)} 个群"
+                logger.warning("scheduled push failed for %s: %s", umo, e)
+        message = f"Pushed \"{it['title']}\" to {len(pushed)} group(s)"
         if skipped:
-            message += f"，{len(skipped)} 个群已是最新（跳过）"
+            message += f", {len(skipped)} group(s) already up to date (skipped)"
         return {
             "reason": "ok",
             "title": it["title"],

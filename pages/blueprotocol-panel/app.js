@@ -71,7 +71,7 @@
     return _modal({ prompt: true, title: title, message: message, value: value || "" });
   }
   function confirmModal(message, title) {
-    return _modal({ prompt: false, title: title || "确认", message: message });
+    return _modal({ prompt: false, title: title || "Confirm", message: message });
   }
 
   function fmtBytes(n) {
@@ -85,7 +85,7 @@
   function unwrap(resp) {
     if (resp && typeof resp === "object" && "status" in resp) {
       if (String(resp.status).toLowerCase() !== "ok") {
-        throw new Error(resp.message || "请求失败");
+        throw new Error(resp.message || "Request failed");
       }
       return resp.data || {};
     }
@@ -101,7 +101,7 @@
       var timeout = setTimeout(function () {
         expired = true;
         clearTimeout(pollTimer);
-        reject(new Error("面板桥接不可用，请在 AstrBot WebUI 里打开本页面"));
+        reject(new Error("Panel bridge unavailable — open this page from the AstrBot WebUI"));
       }, timeoutMs || 8000);
       function finish(error, bridge) {
         if (expired) return;
@@ -135,7 +135,7 @@
     }));
   }
 
-  function fail(err) { toast((err && err.message) || "操作失败", true); }
+  function fail(err) { toast((err && err.message) || "Action failed", true); }
 
   function initTheme() { /* Theme is owned by shell.js. */ }
 
@@ -146,30 +146,30 @@
     var pill = byId("runPill");
     var hasGroups = (st.groups || []).length > 0;
     if (!hasGroups) {
-      pill.textContent = "还没有推送群";
+      pill.textContent = "No push targets";
       pill.className = "pill warn";
     } else if (st.running) {
-      pill.textContent = "定时推送运行中";
+      pill.textContent = "Scheduler running";
       pill.className = "pill";
     } else {
-      pill.textContent = "定时任务未启动";
+      pill.textContent = "Scheduler not started";
       pill.className = "pill off";
     }
     byId("stats").innerHTML = [
-      '<div class="stat"><div class="n">' + esc((st.groups || []).length) + '</div><div class="l">推送群</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.last_check_text || "从未") + '</div><div class="l">上次检查</div></div>',
-      '<div class="stat"><div class="n">' + (hasGroups ? (st.next_check_in || 0) + " 秒" : "—") + '</div><div class="l">距下次检查</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.shot_count || 0) + '</div><div class="l">截图缓存（' + fmtBytes(st.shot_bytes) + '）</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.summary_cache_count || 0) + '</div><div class="l">摘要缓存</div></div>',
-      '<div class="stat"><div class="n">' + esc(st.record_count || 0) + '</div><div class="l">推送记录</div></div>'
+      '<div class="stat"><div class="n">' + esc((st.groups || []).length) + '</div><div class="l">Push targets</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.last_check_text || "Never") + '</div><div class="l">Last check</div></div>',
+      '<div class="stat"><div class="n">' + (hasGroups ? (st.next_check_in || 0) + " s" : "—") + '</div><div class="l">Next check in</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.shot_count || 0) + '</div><div class="l">Image cache (' + fmtBytes(st.shot_bytes) + '</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.summary_cache_count || 0) + '</div><div class="l">Summary cache</div></div>',
+      '<div class="stat"><div class="n">' + esc(st.record_count || 0) + '</div><div class="l">Push records</div></div>'
     ].join("");
   }
 
   function renderGroups() {
     var tb = byId("groupBody");
     if (!state.groups.length) {
-      tb.innerHTML = '<tr><td colspan="5" class="empty">还没有推送群：点右上角「选择群…」，' +
-        '或在群里发「天刀新闻推送 开」</td></tr>';
+      tb.innerHTML = '<tr><td colspan="5" class="empty">No push targets yet — click "Select groups…",' +
+        'or send \"bp push on\" in a group</td></tr>';
       return;
     }
     tb.innerHTML = state.groups.map(function (g) {
@@ -177,12 +177,12 @@
         '<td><input type="checkbox" data-act="check" data-umo="' + esc(g.umo) + '"' +
           (g.enabled ? " checked" : "") + "></td>" +
         "<td>" + esc(g.group_name || g.label) +
-          (g.group_name ? "" : ' <span class="tag warn">无群名</span>') + "</td>" +
+          (g.group_name ? "" : ' <span class="tag warn">No name</span>') + "</td>" +
         '<td class="nm">' + esc(g.group_id || "—") + "</td>" +
-        "<td>" + (g.last_pushed ? esc(g.last_pushed) : '<span class="hint">还没推过</span>') + "</td>" +
+        "<td>" + (g.last_pushed ? esc(g.last_pushed) : '<span class="hint">Never pushed</span>') + "</td>" +
         '<td class="acts">' +
-          '<button class="link" data-act="test" data-umo="' + esc(g.umo) + '">测试推送</button>' +
-          '<button class="link danger" data-act="reset" data-umo="' + esc(g.umo) + '">重置记录</button>' +
+          '<button class="link" data-act="test" data-umo="' + esc(g.umo) + '">Test push</button>' +
+          '<button class="link danger" data-act="reset" data-umo="' + esc(g.umo) + '">Reset</button>' +
         "</td></tr>";
     }).join("");
   }
@@ -190,17 +190,17 @@
   function renderRecords() {
     var box = byId("recordList");
     if (!state.records.length) {
-      box.innerHTML = '<div class="empty">还没有推送记录（第一次推送成功后会出现）</div>';
+      box.innerHTML = '<div class="empty">No push records yet (they appear after the first successful push)</div>';
       byId("recordHint").textContent = "";
       return;
     }
     box.innerHTML = state.records.map(function (r) {
       return '<div class="list-item"><span class="nm" title="' + esc(r.title) + '">' +
-        esc(r.label) + " · " + esc(r.title || "(空)") + "</span>" +
-        (r.umo ? '<button class="link" data-act="reset-one" data-umo="' + esc(r.umo) + '">重置</button>' : "") +
+        esc(r.label) + " · " + esc(r.title || "(empty)") + "</span>" +
+        (r.umo ? '<button class="link" data-act="reset-one" data-umo="' + esc(r.umo) + '">Reset</button>' : "") +
         "</div>";
     }).join("");
-    byId("recordHint").textContent = "共 " + state.records.length + " 条";
+    byId("recordHint").textContent = state.records.length + " record(s)";
   }
 
   function renderShots() {
@@ -208,13 +208,13 @@
     var total = 0;
     state.shots.forEach(function (s) { total += Number(s.size) || 0; });
     byId("shotHint").textContent = state.shots.length
-      ? "共 " + state.shots.length + " 张，占用 " + fmtBytes(total) + "（保留最近 20 张 / 7 天）"
-      : "还没有截图缓存（推送过一次公告后会有）";
+      ? state.shots.length + " image(s), " + fmtBytes(total) + " (keeps the newest 20 / 7 days)"
+      : "No cached images yet (they appear after the first announcement push)";
     if (!state.shots.length) { box.innerHTML = ""; return; }
     box.innerHTML = state.shots.map(function (s) {
       var inner = s.url
         ? '<img src="' + esc(s.url) + '" alt="' + esc(s.name) + '" loading="lazy">'
-        : '<div class="cap">（无法预览，只有文件名）</div>';
+        : '<div class="cap">(preview unavailable, filename only)</div>';
       return '<div class="thumb">' + inner +
         '<div class="cap">' + esc(s.modified_text) + "<br>" + fmtBytes(s.size) + "<br>" +
         esc(s.name) + "</div></div>";
@@ -285,10 +285,10 @@
     var umos = checkedUmOs();
     var btn = byId("btnSaveGroups");
     btn.disabled = true;
-    byId("saveHint").textContent = "保存中…";
+    byId("saveHint").textContent = "Saving…";
     apiPost("page/groups/save", { groups: umos }).then(function () {
       byId("saveHint").textContent = "";
-      return loadAll().then(function () { toast("已保存 " + umos.length + " 个推送群"); });
+      return loadAll().then(function () { toast("Saved " + umos.length + " push target(s)"); });
     }).catch(fail).then(function () {
       btn.disabled = false;
       byId("saveHint").textContent = "";
@@ -300,10 +300,10 @@
   function pushAll() {
     var btn = byId("btnPushAll");
     btn.disabled = true;
-    byId("saveHint").textContent = "正在检查公告…";
+    byId("saveHint").textContent = "Checking for announcements…";
     apiPost("page/push-now", {}).then(function (d) {
       byId("saveHint").textContent = "";
-      toast(d.message || "已完成", d.reason !== "ok" && d.reason !== "up_to_date");
+      toast(d.message || "Done", d.reason !== "ok" && d.reason !== "up_to_date");
       return loadAll();
     }).catch(fail).then(function () {
       btn.disabled = false;
@@ -317,8 +317,8 @@
       if (state.groups[i].umo === umo) { row = state.groups[i]; }
     }
     state.testTarget = umo;
-    byId("testTarget").textContent = "推送到：" + (row ? (row.group_name || row.label) : umo) +
-      "（" + umo + "）";
+    byId("testTarget").textContent = "Push to: " + (row ? (row.group_name || row.label) : umo) +
+      " (" + umo + ")";
     byId("testResult").textContent = "";
     byId("testForce").checked = true;
     byId("testMask").hidden = false;
@@ -328,16 +328,16 @@
     if (!state.testTarget) return;
     var btn = byId("btnTestRun");
     btn.disabled = true;
-    byId("testResult").textContent = "正在推送…";
+    byId("testResult").textContent = "Pushing…";
     apiPost("page/push-now", {
       umo: state.testTarget,
       force: byId("testForce").checked
     }).then(function (d) {
-      byId("testResult").textContent = d.message || "已完成";
-      toast(d.message || "已完成", !(d.pushed || []).length);
+      byId("testResult").textContent = d.message || "Done";
+      toast(d.message || "Done", !(d.pushed || []).length);
       return loadAll();
     }).catch(function (err) {
-      byId("testResult").textContent = (err && err.message) || "推送失败";
+      byId("testResult").textContent = (err && err.message) || "Push failed";
       fail(err);
     }).then(function () { btn.disabled = false; });
   }
@@ -345,11 +345,11 @@
   // ---------- 推送记录 ----------
 
   function resetRecords(umo) {
-    var tip = umo ? "重置这个群的推送记录？" : "清空全部推送记录？下次检查会重推最新公告。";
-    confirmModal(tip, "重置推送记录").then(function (ok) {
+    var tip = umo ? "Reset the push record for this group?" : "Clear every push record? The next check will push the newest announcement again.";
+    confirmModal(tip, "Reset push records").then(function (ok) {
       if (!ok) return;
       apiPost("page/records/reset", umo ? { umo: umo } : {}).then(function () {
-        return loadAll().then(function () { toast("已重置"); });
+        return loadAll().then(function () { toast("Reset done"); });
       }).catch(fail);
     });
   }
@@ -357,31 +357,31 @@
   // ---------- 缓存 / 参数 ----------
 
   function clearShots() {
-    confirmModal("清空截图缓存？下次推送会重新截图。", "清空截图缓存").then(function (ok) {
+    confirmModal("Clear the image cache? The next push will render them again.", "Clear image cache").then(function (ok) {
       if (!ok) return;
       apiPost("page/shots/clear", {}).then(function (d) {
-        return loadAll().then(function () { toast(d.message || "已清空"); });
+        return loadAll().then(function () { toast(d.message || "Cleared"); });
       }).catch(fail);
     });
   }
 
   function clearCache() {
     apiPost("page/cache/clear", {}).then(function (d) {
-      return loadAll().then(function () { toast(d.message || "已清空"); });
+      return loadAll().then(function () { toast(d.message || "Cleared"); });
     }).catch(fail);
   }
 
   function saveConfig() {
     var btn = byId("btnSaveConfig");
     btn.disabled = true;
-    byId("cfgHint").textContent = "保存中…";
+    byId("cfgHint").textContent = "Saving…";
     apiPost("page/config/save", {
       shot_enabled: byId("cfgShotEnabled").value === "1",
       shot_max_height: byId("cfgShotHeight").value.trim(),
       shot_quality: byId("cfgShotQuality").value.trim()
     }).then(function () {
       byId("cfgHint").textContent = "";
-      return loadMeta().then(function () { toast("参数已保存"); });
+      return loadMeta().then(function () { toast("Settings saved"); });
     }).catch(fail).then(function () {
       btn.disabled = false;
       byId("cfgHint").textContent = "";
@@ -404,9 +404,9 @@
       state.picked = next;
       renderPickList();
       byId("pickHint").textContent = d.total
-        ? "共 " + d.total + " 个会话，当前选中 " + countPicked() + " 个"
-        : "还没有可选会话：点「刷新群列表」或先在群里说句话";
-      if (refresh) toast("群列表已刷新（" + (d.refreshed || 0) + " 个群有更新）");
+        ? d.total + " session(s), " + countPicked() + " selected"
+        : "No sessions yet — click \"Refresh group list\" or talk in a group first";
+      if (refresh) toast("Group list refreshed (" + (d.refreshed || 0) + " updated)");
       return state.pickGroups;
     });
   }
@@ -428,7 +428,7 @@
   function renderPickList() {
     var box = byId("pickList");
     if (!state.pickLoaded) {
-      box.innerHTML = '<div class="empty">正在加载群列表…</div>';
+      box.innerHTML = '<div class="empty">Loading group list…</div>';
       return;
     }
     var kw = (byId("pickSearch").value || "").trim().toLowerCase();
@@ -438,13 +438,13 @@
         .toLowerCase().indexOf(kw) >= 0;
     });
     if (!rows.length) {
-      box.innerHTML = '<div class="empty">没有匹配的会话。换个词，或点「刷新群列表」。</div>';
+      box.innerHTML = '<div class="empty">No matching sessions. Try another term, or click "Refresh group list".</div>';
       return;
     }
     box.innerHTML = rows.map(function (g) {
       var sub = [];
-      if (g.group_id) sub.push("群号 " + g.group_id);
-      sub.push(g.source === "pushed" ? "已在推送名单" : "机器人所见");
+      if (g.group_id) sub.push("ID " + g.group_id);
+      sub.push(g.source === "pushed" ? "in push list" : "seen by the bot");
       return '<label class="pick-item">' +
         '<input type="checkbox" data-pick="' + esc(g.value) + '"' +
           (state.picked[g.value] ? " checked" : "") + ">" +
@@ -484,14 +484,14 @@
     state.groups = rows;
     renderGroups();
     byId("pickMask").hidden = true;
-    toast("已选 " + rows.length + " 个群，记得点「保存推送群」");
+    toast(rows.length + " group(s) selected — remember to click \"Save push targets\"");
   }
 
   // ---------- 绑定 & 启动 ----------
 
   function bind() {
     byId("btnReload").addEventListener("click", function () {
-      loadAll().then(function () { toast("已刷新"); }).catch(fail);
+      loadAll().then(function () { toast("Refreshed"); }).catch(fail);
     });
     byId("btnSaveGroups").addEventListener("click", saveGroups);
     byId("btnPushAll").addEventListener("click", pushAll);
@@ -512,8 +512,8 @@
       var umo = box.getAttribute("data-pick");
       if (!umo) return;
       state.picked[umo] = box.checked;
-      byId("pickHint").textContent = "共 " + state.pickGroups.length +
-        " 个会话，当前选中 " + countPicked() + " 个";
+      byId("pickHint").textContent = state.pickGroups.length +
+        " session(s), " + countPicked() + " selected";
     });
 
     byId("groupBody").addEventListener("click", function (e) {
@@ -547,12 +547,12 @@
 
   initTheme();
   bind();
-  byId("groupBody").innerHTML = '<tr><td colspan="5" class="empty">正在连接面板…</td></tr>';
+  byId("groupBody").innerHTML = '<tr><td colspan="5" class="empty">Connecting to the panel…</td></tr>';
   waitForBridge()
     .then(loadAll)
     .catch(function (err) {
       byId("groupBody").innerHTML = '<tr><td colspan="5" class="empty">' +
-        esc((err && err.message) || "加载失败") + "</td></tr>";
+        esc((err && err.message) || "Failed to load") + "</td></tr>";
       fail(err);
     });
 })();

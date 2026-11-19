@@ -39,7 +39,7 @@ class PanelLayoutTests(unittest.TestCase):
   self.page=self.context.new_page();self.errors=[]
   self.page.on('pageerror',lambda e:self.errors.append(str(e)))
   self.page.goto('http://panel.test/index.html')
-  expect(self.page.locator('.connection')).to_have_text('面板已连接')
+  expect(self.page.locator('.connection')).to_have_text('Panel connected')
  def tearDown(self):
   self.context.close();self.assertEqual(self.errors,[])
  def test_theme_and_storage(self):
@@ -59,7 +59,7 @@ class PanelLayoutTests(unittest.TestCase):
    p.locator('#btnSaveSubs').click()
    p.wait_for_function("window.lastPost && window.lastPost.path==='page/subscriptions/save'")
    self.assertEqual(p.evaluate('window.lastPost.body'),{'kind':'live','rows':[]})
-  elif ROOT.name=='wuxianews-panel':
+  elif ROOT.name=='blueprotocol-panel':
    p.locator('#btnPickGroup').click();expect(p.locator('#pickMask')).to_be_visible()
    p.locator('#pickClose').click();expect(p.locator('#pickMask')).to_be_hidden()
    p.locator('.nav-item').nth(3).click()
@@ -78,7 +78,7 @@ class PanelLayoutTests(unittest.TestCase):
   p=self.page
   icon=p.locator('.hero-art img.art-client-icon')
   expect(icon).to_have_count(1)
-  self.assertTrue(icon.get_attribute('src').startswith('./wuxia-client-icon.png'))
+  self.assertTrue(icon.get_attribute('src').startswith('./blueprotocol-icon.png'))
   for theme in ['light','dark']:
    if p.locator('html').get_attribute('data-theme')!=theme:p.locator('#panelTheme').click()
    expect(icon).to_be_visible()

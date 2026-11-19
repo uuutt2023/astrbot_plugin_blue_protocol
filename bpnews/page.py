@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""天刀公告插件的 Web 面板后端接口（AstrBot Plugin Pages）。
+"""Blue Protocol: Star Resonance 公告插件的 Web 面板后端接口（AstrBot Plugin Pages）。
 
-路由挂在 ``/astrbot_plugin_wuxianews/page/*`` 下，前端 ``pages/wuxianews-panel/``
+路由挂在 ``/astrbot_plugin_blue_protocol/page/*`` 下，前端 ``pages/blueprotocol-panel/``
 通过 ``window.AstrBotPluginPage`` 的 apiGet / apiPost 调用（bridge 会自动补插件名前缀）。
 
     GET  /page/meta           常量与截图参数（含默认值）
@@ -70,7 +70,7 @@ except (ImportError, AttributeError):  # 老版本回落到 quart
 
 from .groups import GroupNameResolver, session_label, split_umo
 
-PLUGIN_NAME = "astrbot_plugin_wuxianews"
+PLUGIN_NAME = "astrbot_plugin_blue_protocol"
 
 # 推送群名单上限，防止面板批量勾选把配置撑爆
 MAX_PUSH_GROUPS = 200
@@ -82,7 +82,7 @@ def _log_warn(message: str) -> None:
     try:
         from astrbot.api import logger
 
-        logger.warning(f"[wuxianews] {message}")
+        logger.warning(f"[blueprotocol] {message}")
     except Exception:
         pass
 
@@ -98,7 +98,7 @@ def _fmt_time(ts: float) -> str:
 
 
 class NewsPageController:
-    """把天刀公告插件的能力包成 HTTP 接口。"""
+    """把 Blue Protocol: Star Resonance 公告插件的能力包成 HTTP 接口。"""
 
     def __init__(
         self, context: Any, plugin: Any = None, data_dir: str | Path | None = None
@@ -113,17 +113,17 @@ class NewsPageController:
 
     def register_routes(self) -> None:
         routes: list[tuple[str, Callable[..., Any], list[str], str]] = [
-            ("/page/meta", self.get_meta, ["GET"], "天刀公告：常量与截图参数"),
-            ("/page/status", self.get_status, ["GET"], "天刀公告：运行状态与推送群"),
-            ("/page/groups", self.get_groups, ["GET"], "天刀公告：会话列表（带群名）"),
-            ("/page/groups/save", self.save_groups, ["POST"], "天刀公告：保存推送群名单"),
-            ("/page/push-now", self.push_now, ["POST"], "天刀公告：立刻检查并推送"),
-            ("/page/records", self.get_records, ["GET"], "天刀公告：推送去重记录"),
-            ("/page/records/reset", self.reset_records, ["POST"], "天刀公告：清空推送记录"),
-            ("/page/shots", self.get_shots, ["GET"], "天刀公告：截图缓存列表"),
-            ("/page/shots/clear", self.clear_shots, ["POST"], "天刀公告：清理截图缓存"),
-            ("/page/cache/clear", self.clear_cache, ["POST"], "天刀公告：清空摘要缓存"),
-            ("/page/config/save", self.save_config, ["POST"], "天刀公告：保存截图参数"),
+            ("/page/meta", self.get_meta, ["GET"], "Blue Protocol: constants and image settings"),
+            ("/page/status", self.get_status, ["GET"], "Blue Protocol: runtime status and push targets"),
+            ("/page/groups", self.get_groups, ["GET"], "Blue Protocol: session list (with group names)"),
+            ("/page/groups/save", self.save_groups, ["POST"], "Blue Protocol: save push targets"),
+            ("/page/push-now", self.push_now, ["POST"], "Blue Protocol: check and push now"),
+            ("/page/records", self.get_records, ["GET"], "Blue Protocol: push dedup records"),
+            ("/page/records/reset", self.reset_records, ["POST"], "Blue Protocol: clear push records"),
+            ("/page/shots", self.get_shots, ["GET"], "Blue Protocol: long-image cache list"),
+            ("/page/shots/clear", self.clear_shots, ["POST"], "Blue Protocol: clear long-image cache"),
+            ("/page/cache/clear", self.clear_cache, ["POST"], "Blue Protocol: clear summary cache"),
+            ("/page/config/save", self.save_config, ["POST"], "Blue Protocol: save long-image settings"),
         ]
         for path, handler, methods, desc in routes:
             try:
@@ -470,7 +470,7 @@ class NewsPageController:
                 "added": [{"umo": u, "label": self._label(u)} for u in added],
                 "removed": [{"umo": u, "label": self._label(u)} for u in removed],
             },
-            f"已保存：新增 {len(added)} 个，移除 {len(removed)} 个",
+            f"Saved: {len(added)} added, {len(removed)} removed",
         )
 
     async def push_now(self) -> Any:
@@ -525,7 +525,7 @@ class NewsPageController:
         if not umo:
             count = len(records)
             self._write_records({})
-            return self._ok({"removed": count}, f"已清空 {count} 条推送记录")
+            return self._ok({"removed": count}, f"Cleared {count} push record(s)")
         _, _, sid = split_umo(umo)
         keys = [f"push:{umo}"]
         if sid:
@@ -537,7 +537,7 @@ class NewsPageController:
         self._write_records(records)
         return self._ok(
             {"removed": removed, "umo": umo, "label": self._label(umo)},
-            f"{self._label(umo)} 的推送记录已重置",
+            f"Push record reset for {self._label(umo)}",
         )
 
     async def get_shots(self) -> Any:
@@ -566,7 +566,7 @@ class NewsPageController:
                     freed += size
                 except OSError:
                     continue
-        return self._ok({"removed": removed, "freed": freed}, f"已删除 {removed} 张截图")
+        return self._ok({"removed": removed, "freed": freed}, f"Deleted {removed} image(s)")
 
     async def clear_cache(self) -> Any:
         """清空摘要缓存（下次推送重新抓详情页）。"""
@@ -576,7 +576,7 @@ class NewsPageController:
                 (self.data_dir / "summary_cache.json").unlink(missing_ok=True)
             except OSError as exc:
                 return self._err(f"删除缓存失败：{exc}", status_code=500)
-        return self._ok({"removed": count}, f"已清空 {count} 条摘要缓存")
+        return self._ok({"removed": count}, f"Cleared {count} summary cache entr(ies)")
 
     # ------------------------------------------------------------------
     # 接口：截图参数
@@ -627,5 +627,5 @@ class NewsPageController:
                 "shot_max_height": max_height,
                 "shot_quality": quality,
             },
-            "截图参数已保存",
+            "Long-image settings saved",
         )
