@@ -150,6 +150,7 @@ def test_plugin_files_present():
         os.path.join(".astrbot-plugin", "i18n", "en-US.json"),
         os.path.join("pages", "blueprotocol-panel", "index.html"),
         os.path.join("pages", "blueprotocol-panel", "i18n.js"),
+        os.path.join("CHANGELOG.md"),
         os.path.join("README_en.md"),
         os.path.join("README_zh.md"),
         os.path.join("tools", "split_readme.py"),

@@ -2,7 +2,7 @@ name: astrbot_plugin_blue_protocol
 display_name: "Blue Protocol: Star Resonance"
 short_desc: "Blue Protocol: Star Resonance announcement bot"
 desc: "Blue Protocol: Star Resonance (蓝色协议：星痕共鸣) official announcement bot — announcement list with paging and categories, latest announcement with summary and a browser-width long image typeset locally with Typst, per-group dedup, and scheduled auto-push (checked every 5 minutes). Includes a web panel to manage push targets by group name."
-version: v1.6.0
+version: v1.6.1
 author: uuutt
 repo: "https://github.com/uuutt2023/astrbot_plugin_blue_protocol"
 # 插件 WebUI 自定义页面（Plugin Pages）能力在 AstrBot v4.24.1 正式引入

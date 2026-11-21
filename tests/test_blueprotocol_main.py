@@ -8,6 +8,7 @@
 刷新群列表 / 一次推送的去重与强制重发 / _tick 节流 / 指令参数解析 / terminate 落盘。
 """
 import asyncio
+import importlib.util
 import json
 import os
 import sys
@@ -418,6 +419,42 @@ def test_command_handlers_ignore_foreign_prefix():
     plugin2, _, _ = make_plugin(command_prefixes=["星痕"])
     out = run(_collect(plugin2.list_cmd(make_event(text="bp list"))))
     assert out == [], out
+
+
+def test_hot_reload_purges_stale_submodules():
+    """热重载后 sys.modules 里不能留着旧的 bpnews.* 模块。
+
+    AstrBot 加载插件用 data.plugins.<插件名>.main，热重载也只清这个前缀下的
+    模块；插件内部的包是以顶层名字 bpnews 导入的，不在那个前缀下 —— 旧模块
+    残留会让新 main.py 读到旧代码（线上报过
+    "module 'bpnews.layout' has no attribute 'DEFAULT_MODULE_SPACING'"）。
+    """
+    root = str(_PLUGIN_ROOT)
+    # 造一个「旧版本」的 bpnews.layout：故意少一个常量
+    stale = types.ModuleType("bpnews.layout")
+    stale.__file__ = os.path.join(root, "bpnews", "layout.py")
+    stale.OLD_MARKER = "stale"
+    saved = {k: sys.modules.get(k) for k in ("bpnews", "bpnews.layout")}
+    sys.modules["bpnews"] = types.ModuleType("bpnews")
+    sys.modules["bpnews.layout"] = stale
+    try:
+        # 重新执行 main.py（模拟热重载）
+        spec = importlib.util.spec_from_file_location(
+            "bp_main_reload_probe", os.path.join(root, "main.py")
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        # 旧模块必须已经被换掉
+        assert sys.modules["bpnews.layout"] is not stale
+        # 新模块要带得上当前版本的常量
+        assert hasattr(sys.modules["bpnews.layout"], "DEFAULT_MODULE_SPACING")
+        assert module.layout.DEFAULT_MODULE_SPACING == 34
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = value
 
 
 def test_command_handlers_keep_docstring_first():

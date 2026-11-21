@@ -85,7 +85,7 @@ def _typst_status(data_dir: Path | None) -> dict:
     if data_dir is None:
         return {"available": False, "font_source": "none", "managed_fonts": 0, "system_cjk": False}
     try:
-        from bpnews.typst import render as typst_render
+        from .typst import render as typst_render
 
         return typst_render.status(data_dir)
     except Exception as exc:  # noqa: BLE001

@@ -26,17 +26,51 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-from bpnews import api, commands, layout, screenshot
-from bpnews.typst import render as typst_render
-from bpnews.api import TAG_ALL, resolve_tag, tag_display_name
-from bpnews.groups import (
+
+def _purge_stale_submodules() -> None:
+    """清掉上次加载残留的 ``bpnews.*`` 模块。
+
+    AstrBot 加载插件用的是 ``data.plugins.<插件名>.main``，热重载时也只会清掉
+    这个前缀下的模块。可插件内部的包是以**顶层名字**（``bpnews``）导入的，
+    不在那个前缀下 —— 于是重载之后 ``sys.modules`` 里还留着旧代码，新 main.py
+    读到的仍是旧的 ``bpnews.layout``，运行时才会报
+    ``module 'bpnews.layout' has no attribute 'xxx'``。
+
+    所以在导入之前主动清掉本插件目录下的 ``bpnews.*``，保证一次重载里所有
+    模块都是同一份代码。按文件路径判定，别处同名的包不动。
+    """
+    root = _PLUGIN_ROOT
+    for name in [
+        key
+        for key in list(sys.modules)
+        if key == "bpnews" or key.startswith("bpnews.")
+    ]:
+        module = sys.modules.get(name)
+        if module is None:
+            continue
+        path = getattr(module, "__file__", None)
+        if path:
+            try:
+                if not Path(path).resolve().is_relative_to(root):
+                    continue
+            except (OSError, ValueError):
+                continue
+        sys.modules.pop(name, None)
+
+
+_purge_stale_submodules()
+
+from bpnews import api, commands, layout, screenshot  # noqa: E402
+from bpnews.typst import render as typst_render  # noqa: E402
+from bpnews.api import TAG_ALL, resolve_tag, tag_display_name  # noqa: E402
+from bpnews.groups import (  # noqa: E402
     SOURCE_API,
     GroupNameResolver,
     parse_group_info,
     parse_group_list,
 )
-from bpnews.page import NewsPageController
-from bpnews.render import card_data, render_article
+from bpnews.page import NewsPageController  # noqa: E402
+from bpnews.render import card_data, render_article  # noqa: E402
 
 PLUGIN_NAME = "astrbot_plugin_blue_protocol"
 GAME_NAME = "Blue Protocol: Star Resonance"
