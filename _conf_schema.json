@@ -35,6 +35,42 @@
     "type": "string",
     "default": ""
   },
+  "typst_long_width": {
+    "description": "i18n:config.typst_long_width.description",
+    "hint": "i18n:config.typst_long_width.hint",
+    "type": "int",
+    "default": 1280
+  },
+  "typst_long_body_width": {
+    "description": "i18n:config.typst_long_body_width.description",
+    "hint": "i18n:config.typst_long_body_width.hint",
+    "type": "int",
+    "default": 1258
+  },
+  "typst_long_border": {
+    "description": "i18n:config.typst_long_border.description",
+    "hint": "i18n:config.typst_long_border.hint",
+    "type": "int",
+    "default": 11
+  },
+  "typst_long_theme": {
+    "description": "i18n:config.typst_long_theme.description",
+    "hint": "i18n:config.typst_long_theme.hint",
+    "type": "string",
+    "default": "dark"
+  },
+  "typst_para_spacing": {
+    "description": "i18n:config.typst_para_spacing.description",
+    "hint": "i18n:config.typst_para_spacing.hint",
+    "type": "int",
+    "default": 14
+  },
+  "typst_line_height": {
+    "description": "i18n:config.typst_line_height.description",
+    "hint": "i18n:config.typst_line_height.hint",
+    "type": "float",
+    "default": 1.8
+  },
   "shot_enabled": {
     "description": "i18n:config.shot_enabled.description",
     "hint": "i18n:config.shot_enabled.hint",

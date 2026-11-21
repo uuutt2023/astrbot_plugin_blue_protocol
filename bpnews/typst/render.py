@@ -22,6 +22,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from .. import layout
 from . import assets, fonts
 from .html2typst import html_to_blocks
 
@@ -31,6 +32,49 @@ _WORKER = Path(__file__).resolve().parent / "worker.py"
 DEFAULT_PPI = 144
 DEFAULT_TIMEOUT = 60.0
 MAX_BYTES = 2_500_000
+
+# 版式默认值统一放在 bpnews.layout 里，Typst 与 HTML 两条路共用。
+DEFAULT_LONG_WIDTH = layout.DEFAULT_WIDTH
+DEFAULT_LONG_BODY_WIDTH = layout.DEFAULT_BODY_WIDTH
+DEFAULT_LONG_BORDER = layout.DEFAULT_BORDER
+DEFAULT_LONG_THEME = layout.DEFAULT_THEME
+DEFAULT_PARA_SPACING = layout.DEFAULT_PARA_SPACING
+DEFAULT_LINE_HEIGHT = layout.DEFAULT_LINE_HEIGHT
+
+
+def long_style(
+    *,
+    width: int = DEFAULT_LONG_WIDTH,
+    body_width: int = DEFAULT_LONG_BODY_WIDTH,
+    border: int = DEFAULT_LONG_BORDER,
+    theme: str = DEFAULT_LONG_THEME,
+    para_spacing: float = DEFAULT_PARA_SPACING,
+    line_height: float = DEFAULT_LINE_HEIGHT,
+    ppi: int = DEFAULT_PPI,
+) -> dict[str, Any]:
+    """把像素级的版式配置算成模板要用的样式表。
+
+    返回的 ``style`` 里尺寸单位是 px，``scale`` 是「1px 等于多少 pt」
+    （= 72 / ppi），模板用 ``px(v) = v * scale * 1pt`` 换算。
+    """
+    spec = layout.resolve(
+        width=width,
+        body_width=body_width,
+        border=border,
+        theme=theme,
+        para_spacing=para_spacing,
+        line_height=line_height,
+    )
+    style: dict[str, Any] = {
+        "scale": 72.0 / float(max(72, min(300, int(ppi or DEFAULT_PPI)))),
+        "width": spec["width"],
+        "body": spec["body"],
+        "border": spec["border"],
+        "leading": spec["line_height"],
+        "spacing": spec["para_spacing"],
+    }
+    style.update(spec["type"])
+    return style
 
 
 class TypstRenderError(RuntimeError):
@@ -196,9 +240,34 @@ async def render_long_image(
     quality: int = 88,
     max_bytes: int = MAX_BYTES,
     font_url: str | None = None,
+    width: int = DEFAULT_LONG_WIDTH,
+    body_width: int = DEFAULT_LONG_BODY_WIDTH,
+    border: int = DEFAULT_LONG_BORDER,
+    theme: str = DEFAULT_LONG_THEME,
+    para_spacing: float = DEFAULT_PARA_SPACING,
+    line_height: float = DEFAULT_LINE_HEIGHT,
 ) -> tuple[Path, bool]:
     """用 Typst 排一张公告长图，返回 (图片路径, 是否被截断)。"""
+    spec = layout.resolve(
+        width=width,
+        body_width=body_width,
+        border=border,
+        theme=theme,
+        para_spacing=para_spacing,
+        line_height=line_height,
+    )
+    style = long_style(
+        width=spec["width"],
+        body_width=spec["body"],
+        border=spec["border"],
+        theme=spec["theme"],
+        para_spacing=spec["para_spacing"],
+        line_height=spec["line_height"],
+        ppi=ppi,
+    )
     key = str(detail.get("news_id") or detail.get("url") or detail.get("title") or "")
+    # 版式变了就该重新出图，样式指纹进缓存键
+    key = f"{key}|{layout.fingerprint(spec)}"
     full = _cache_path(data_dir, key, truncated=False)
     trunc = _cache_path(data_dir, key, truncated=True)
     for path in (full, trunc):
@@ -218,6 +287,9 @@ async def render_long_image(
         "cover": "",
         "kv": "",
         "font": font_config.get("family") or "",
+        "theme": spec["theme"],
+        "colors": spec["colors"],
+        "style": style,
         "body": html_to_blocks(content),
     }
 
@@ -279,6 +351,8 @@ async def render_card(
         "desc": str(summary or ""),
         "kv": "",
         "font": font_config.get("family") or "",
+        "theme": "dark",
+        "colors": dict(layout.THEME_COLORS["dark"]),
     }
 
     job_files: dict[str, Path | bytes] = {}

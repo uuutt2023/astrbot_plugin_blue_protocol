@@ -70,7 +70,34 @@
         <span class="hint" id="cfgTypstStatus"></span>
       </div>
       <div class="field">
-        <label for="cfgShotEnabled" data-i18n="lbl.longImage">Render announcements as a phone-sized long image</label>
+        <label for="cfgTypstTheme" data-i18n="lbl.typstTheme">Long-image theme</label>
+        <select id="cfgTypstTheme">
+          <option value="dark" data-i18n="opt.themeDark">Dark</option>
+          <option value="light" data-i18n="opt.themeLight">Light</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="cfgTypstWidth" data-i18n="lbl.canvasWidth">Canvas width (pixels)</label>
+        <input type="text" id="cfgTypstWidth" placeholder="1280">
+      </div>
+      <div class="field">
+        <label for="cfgTypstBodyWidth" data-i18n="lbl.bodyWidth">Text column width (pixels, 0 = auto)</label>
+        <input type="text" id="cfgTypstBodyWidth" placeholder="1258">
+      </div>
+      <div class="field">
+        <label for="cfgTypstBorder" data-i18n="lbl.borderWidth">Border width (pixels)</label>
+        <input type="text" id="cfgTypstBorder" placeholder="11">
+      </div>
+      <div class="field">
+        <label for="cfgTypstParaSpacing" data-i18n="lbl.paraSpacing">Paragraph spacing (pixels)</label>
+        <input type="text" id="cfgTypstParaSpacing" placeholder="14">
+      </div>
+      <div class="field">
+        <label for="cfgTypstLineHeight" data-i18n="lbl.lineHeight">Line height (multiplier)</label>
+        <input type="text" id="cfgTypstLineHeight" placeholder="1.8">
+      </div>
+      <div class="field">
+        <label for="cfgShotEnabled" data-i18n="lbl.longImage">Render announcements as a long image</label>
         <select id="cfgShotEnabled">
           <option value="1" data-i18n="opt.longImageOn">Enabled (render the announcement body)</option>
           <option value="0" data-i18n="opt.longImageOff">Disabled (use the dark card image)</option>

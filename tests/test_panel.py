@@ -204,6 +204,12 @@ def test_meta_reads_config():
         "typst_enabled": True,
         "typst_ppi": 144,
         "typst_timeout": 60,
+        "typst_long_width": 1280,
+        "typst_long_body_width": 1258,
+        "typst_long_border": 11,
+        "typst_long_theme": "dark",
+        "typst_para_spacing": 14,
+        "typst_line_height": 1.8,
     }
     assert data["limits"]["max_push_groups"] == page_mod.MAX_PUSH_GROUPS
     assert data["defaults"]["shot_quality"] == 88
@@ -430,6 +436,12 @@ def test_save_config_validation_and_ok():
         "typst_enabled": True,
         "typst_ppi": 144,
         "typst_timeout": 60,
+        "typst_long_theme": "dark",
+        "typst_line_height": 1.8,
+        "typst_long_width": 1280,
+        "typst_long_body_width": 1258,
+        "typst_long_border": 11,
+        "typst_para_spacing": 14,
     }
     assert plugin.config["shot_max_height"] == 8000 and plugin.config.save_count == 1
     assert "saved" in msg.lower()
@@ -463,6 +475,53 @@ def test_save_config_typst_options():
     with_request(FakeRequest(body={"typst_timeout": 0}, method="POST"))
     ok, _, msg = unwrap(run(ctrl.save_config()))
     assert not ok and "5-600" in msg
+
+
+def test_save_config_long_image_layout():
+    """长图版式参数（主题/宽度/边框/段间距/行高）能从面板保存并校验。"""
+    plugin, ctrl, _ = make_case()
+    with_request(
+        FakeRequest(
+            body={
+                "shot_enabled": True,
+                "shot_max_height": 5000,
+                "shot_quality": 88,
+                "typst_long_theme": "light",
+                "typst_long_width": 1440,
+                "typst_long_body_width": 1400,
+                "typst_long_border": 20,
+                "typst_para_spacing": 20,
+                "typst_line_height": 2.1,
+            },
+            method="POST",
+        )
+    )
+    ok, data, _ = unwrap(run(ctrl.save_config()))
+    assert ok
+    assert data["typst_long_theme"] == "light"
+    assert data["typst_long_width"] == 1440
+    assert data["typst_long_body_width"] == 1400
+    assert data["typst_long_border"] == 20
+    assert data["typst_para_spacing"] == 20
+    assert data["typst_line_height"] == 2.1
+    assert plugin.config["typst_long_theme"] == "light"
+
+    # 主题只允许 dark / light
+    with_request(FakeRequest(body={"typst_long_theme": "blue"}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "dark" in msg and "light" in msg
+    # 宽度越界
+    with_request(FakeRequest(body={"typst_long_width": 10}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "320-4096" in msg
+    # 行高越界
+    with_request(FakeRequest(body={"typst_line_height": 9}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "1.0-3.0" in msg
+    # 边框越界
+    with_request(FakeRequest(body={"typst_long_border": 999}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "0-200" in msg
 
 
 def test_meta_reports_typst_status():

@@ -685,6 +685,56 @@ def test_news_image_returns_none_when_all_fail():
     assert path is None
 
 
+def test_long_image_options_read_config():
+    """长图版式配置要从 config 读到，坏值回退默认。"""
+    plugin, _, _ = make_plugin(
+        typst_long_width=1600,
+        typst_long_body_width=1500,
+        typst_long_border=50,
+        typst_long_theme="light",
+        typst_para_spacing=20,
+        typst_line_height=2.0,
+    )
+    opts = plugin._long_image_options()
+    assert opts["width"] == 1600
+    assert opts["body_width"] == 1500
+    assert opts["border"] == 50
+    assert opts["theme"] == "light"
+    assert opts["para_spacing"] == 20
+    assert opts["line_height"] == 2.0
+
+    default, _, _ = make_plugin(typst_enabled=True)
+    opts = default._long_image_options()
+    assert opts["width"] == 1280
+    assert opts["body_width"] == 1258
+    assert opts["border"] == 11
+    assert opts["theme"] == "dark"
+    assert opts["para_spacing"] == 14
+    assert opts["line_height"] == 1.8
+
+
+def test_news_image_passes_layout_to_typst():
+    """版式参数要一路传到 Typst 渲染器。"""
+    plugin, _, _ = make_plugin(
+        typst_enabled=True,
+        typst_long_width=1600,
+        typst_long_theme="light",
+        typst_long_border=30,
+    )
+    seen = {}
+
+    async def fake_typst_long(detail, data_dir, **kw):
+        seen.update(kw)
+        return "/tmp/x.jpg", False
+
+    bp_main.typst_render.render_long_image = fake_typst_long
+    run(plugin._news_image(dict(NEWS_ITEM), dict(NEWS_DETAIL), "摘要"))
+    assert seen["width"] == 1600
+    assert seen["theme"] == "light"
+    assert seen["border"] == 30
+    assert seen["body_width"] == 1258
+
+
 def test_typst_options_read_config():
     plugin, _, _ = make_plugin(typst_enabled=True, typst_ppi=180, typst_timeout=90)
     opts = plugin._typst_options()

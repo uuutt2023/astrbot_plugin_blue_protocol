@@ -4,19 +4,51 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: #0F1218; }
-body {
-  width: 390px;
-  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Helvetica Neue", sans-serif;
-  color: #ECEDF2; -webkit-font-smoothing: antialiased;
-  background: #0F1218;
+/* 版式参数由 bpnews.layout 算好后注入（宽度/正文宽度/边框/主题/段间距/行高），
+   和 Typst 长图用的是同一份定义，两条路出来的图长得一样。 */
+:root {
+  --page-w: 1280px;
+  --body-w: 1258px;
+  --border: 11px;
+  --para-gap: 14px;
+  --line-height: 1.8;
+  --font-tag: 14px;
+  --font-title: 30px;
+  --font-meta: 15px;
+  --font-body: 17px;
+  --font-link: 14px;
+  --font-foot: 13px;
+  --banner-h: 260px;
+  --pad-top: 30px;
+  --cover-h: 400px;
+
+  --bg: #0F1218;
+  --text: #ECEDF2;
+  --body: #E4E6EC;
+  --muted: #A8ACB8;
+  --dim: #8A8E9C;
+  --gold: #FFD76E;
+  --link: #9CC0F5;
+  --line: #2A3040;
+  --chip: #2C281B;
+  --panel: #11151F;
+
+/* 版式参数由宿主侧注入，覆盖上面的默认值 */
+{{STYLE}}
 }
-.page { width: 390px; background: #0F1218; padding-bottom: 18px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); }
+body {
+  width: var(--page-w);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Helvetica Neue", sans-serif;
+  color: var(--text); -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+}
+.page { width: var(--page-w); background: var(--bg); padding-bottom: 18px; }
 .kv {
   position: relative;
-  height: 132px;
-  background: url(https://game.gtimg.cn/images/bpm/web202412/kv.jpg) no-repeat 50% 70%;
+  height: var(--banner-h);
+  background: url(https://game.gtimg.cn/images/bpm/web202412/kv.jpg) no-repeat 50% 50%;
   background-size: cover;
   display: flex; align-items: flex-end; gap: 10px;
   padding: 0 18px 14px;
@@ -24,40 +56,43 @@ body {
 .kv::after {
   content: '';
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-  background: linear-gradient(180deg, rgba(10,12,20,.12) 0%, rgba(10,12,20,.74) 100%);
+  background: linear-gradient(180deg, rgba(10,12,20,0) 0%, rgba(10,12,20,.72) 62%, rgba(10,12,20,.97) 100%);
 }
-.kv-tag { position: relative; font-size: 13px; font-weight: 800; color: #FFD76E; letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,.85); }
-.kv-name { position: relative; font-size: 12px; color: rgba(255,255,255,.86); text-shadow: 0 2px 10px rgba(0,0,0,.85); }
-.content { padding: 20px 18px 0; }
+.kv-tag { position: relative; font-size: 15px; font-weight: 800; color: var(--gold); letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,.85); }
+.kv-name { position: relative; font-size: 13px; color: rgba(255,255,255,.86); text-shadow: 0 2px 10px rgba(0,0,0,.85); }
+.content { padding: var(--pad-top) var(--border) 0; max-width: var(--body-w); }
 .tag {
-  display: inline-block; font-size: 12px; font-weight: 800; color: #FFD76E;
-  background: rgba(255,215,110,.14); padding: 3px 10px; border-radius: 6px;
+  display: inline-block; font-size: var(--font-tag); font-weight: 800; color: var(--gold);
+  background: var(--chip); padding: 3px 10px; border-radius: 6px;
 }
 .title {
-  margin-top: 12px; font-size: 21px; font-weight: 800; color: #fff;
-  line-height: 1.5; letter-spacing: .5px; word-break: break-word;
+  margin-top: 12px; font-size: var(--font-title); font-weight: 800; color: var(--text);
+  line-height: 1.4; letter-spacing: .5px; word-break: break-word;
 }
-.meta { margin-top: 10px; font-size: 12px; color: #868A99; }
+.meta { margin-top: 10px; font-size: var(--font-meta); color: var(--muted); }
 .cover {
-  display: block; width: 100%; margin-top: 14px; border-radius: 10px;
-  background: #1A1F2B; border: 1px solid rgba(255,255,255,.07);
+  display: block; width: 100%; height: var(--cover-h); object-fit: cover;
+  margin-top: 18px; border-radius: 10px;
+  background: var(--chip); border: 1px solid var(--line);
 }
-.divider { height: 1px; background: rgba(255,255,255,.08); margin: 18px 18px 0; }
+.divider { height: 1px; background: var(--line); margin: 20px var(--border) 0; max-width: var(--body-w); }
 .body {
-  margin-top: 16px; font-size: 15px; line-height: 1.85; color: #E4E6EC;
+  margin-top: 16px; font-size: var(--font-body); line-height: var(--line-height); color: var(--body);
   word-break: break-word; overflow-wrap: anywhere;
+  max-width: var(--body-w);
 }
-.body p { margin: 0 0 10px; }
+.body p { margin: 0 0 var(--para-gap); }
 .body br { content: ""; display: block; margin-bottom: 6px; }
 .body img { max-width: 100%; border-radius: 8px; }
 .body table { max-width: 100%; border-collapse: collapse; }
-.body td, .body th { border: 1px solid rgba(255,255,255,.12); padding: 4px 6px; font-size: 13px; }
+.body td, .body th { border: 1px solid var(--line); padding: 4px 6px; font-size: 13px; }
 .link {
-  margin: 18px 18px 0; font-size: 11px; color: #8CB2F0; background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 12px;
+  margin: 18px var(--border) 0; max-width: var(--body-w);
+  font-size: var(--font-link); color: var(--link); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
   word-break: break-all; line-height: 1.6;
 }
-.foot { padding: 14px 18px 0; font-size: 11px; color: #6E7280; text-align: right; }
+.foot { padding: 14px var(--border) 0; font-size: var(--font-foot); color: var(--dim); text-align: right; }
 </style>
 </head>
 <body>

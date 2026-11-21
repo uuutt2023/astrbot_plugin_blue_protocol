@@ -14,7 +14,9 @@ window.AstrBotPluginPage = {
   check_interval:60,dynamic_check_interval:180,groups:[],rows:[],records:[],shots:[],
   live:{rows:[]},dynamic:{rows:[]},
   config:{shot_enabled:true,shot_quality:85,shot_max_height:8000,
-   typst_enabled:true,typst_ppi:144,typst_timeout:60},
+   typst_enabled:true,typst_ppi:144,typst_timeout:60,
+   typst_long_width:1280,typst_long_body_width:1258,typst_long_border:11,
+   typst_long_theme:'dark',typst_para_spacing:14,typst_line_height:1.8},
   typst:{available:true,font_source:'system',managed_fonts:0,system_cjk:true},
   match_types:[{value:'exact',label:'精确'}],formats:[{value:'text',label:'文本'}],
   rules:[],scopes:[{value:'global',label:'全局'}],stats:{total:12,enabled:10,hits:12345},enabled:true
@@ -156,6 +158,30 @@ class PanelLayoutTests(unittest.TestCase):
   p.locator('#cfgTypstEnabled').select_option('0')
   p.locator('#btnSaveConfig').click()
   self.assertEqual(p.evaluate('window.lastPost.body.typst_enabled'),False)
+
+ def test_typst_layout_fields(self):
+  """图片设置里的版式字段：主题/宽度/边框/段间距/行高。"""
+  p=self.page
+  p.locator('.nav-item').nth(3).click()
+  expect(p.locator('#cfgTypstTheme')).to_have_value('dark')
+  expect(p.locator('#cfgTypstWidth')).to_have_value('1280')
+  expect(p.locator('#cfgTypstBodyWidth')).to_have_value('1258')
+  expect(p.locator('#cfgTypstBorder')).to_have_value('11')
+  expect(p.locator('#cfgTypstParaSpacing')).to_have_value('14')
+  expect(p.locator('#cfgTypstLineHeight')).to_have_value('1.8')
+  # 改一下再保存，字段要一起发出去
+  p.locator('#cfgTypstTheme').select_option('light')
+  p.locator('#cfgTypstWidth').fill('1600')
+  p.locator('#cfgTypstBorder').fill('24')
+  p.locator('#cfgTypstParaSpacing').fill('22')
+  p.locator('#cfgTypstLineHeight').fill('2.1')
+  p.locator('#btnSaveConfig').click()
+  body=p.evaluate('window.lastPost.body')
+  self.assertEqual(body['typst_long_theme'],'light')
+  self.assertEqual(body['typst_long_width'],'1600')
+  self.assertEqual(body['typst_long_border'],'24')
+  self.assertEqual(body['typst_para_spacing'],'22')
+  self.assertEqual(body['typst_line_height'],'2.1')
 
  def test_language_select_in_appearance(self):
   """「界面外观」里的 Language 下拉同样能切语言。"""

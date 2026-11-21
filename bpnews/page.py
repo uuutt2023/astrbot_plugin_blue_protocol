@@ -228,6 +228,13 @@ class NewsPageController:
         except (TypeError, ValueError):
             return default
 
+    def _float_cfg(self, key: str, default: float) -> float:
+        """取浮点配置。坏值回退默认。"""
+        try:
+            return float(self._cfg(key, default))
+        except (TypeError, ValueError):
+            return default
+
     # ------------------------------------------------------------------
     # 数据文件（都在 plugin_data 下，纯 IO，方便单测）
     # ------------------------------------------------------------------
@@ -319,6 +326,11 @@ class NewsPageController:
                     "max_push_groups": MAX_PUSH_GROUPS,
                     "shot_max_height": [0, 20000],
                     "shot_quality": [1, 100],
+                    "typst_long_width": [320, 4096],
+                    "typst_long_body_width": [0, 4096],
+                    "typst_long_border": [0, 200],
+                    "typst_para_spacing": [0, 120],
+                    "typst_line_height": [1.0, 3.0],
                 },
                 "config": {
                     "shot_enabled": bool(self._cfg("shot_enabled", True)),
@@ -327,6 +339,14 @@ class NewsPageController:
                     "typst_enabled": bool(self._cfg("typst_enabled", True)),
                     "typst_ppi": self._int_cfg("typst_ppi", 144),
                     "typst_timeout": self._int_cfg("typst_timeout", 60),
+                    "typst_long_width": self._int_cfg("typst_long_width", 1280),
+                    "typst_long_body_width": self._int_cfg("typst_long_body_width", 1258),
+                    "typst_long_border": self._int_cfg("typst_long_border", 11),
+                    "typst_long_theme": str(self._cfg("typst_long_theme", "dark") or "dark"),
+                    "typst_para_spacing": self._int_cfg("typst_para_spacing", 14),
+                    "typst_line_height": round(
+                        self._float_cfg("typst_line_height", 1.8), 3
+                    ),
                 },
                 "typst": _typst_status(self.data_dir),
                 "defaults": {"shot_max_height": 5000, "shot_quality": 88},
@@ -623,6 +643,36 @@ class NewsPageController:
         if not 1 <= quality <= 100:
             return self._err("JPEG 质量需在 1-100 之间")
 
+        long_numbers = {}
+        for key, default, low, high in (
+            ("typst_long_width", 1280, 320, 4096),
+            ("typst_long_body_width", 1258, 0, 4096),
+            ("typst_long_border", 11, 0, 200),
+            ("typst_para_spacing", 14, 0, 120),
+        ):
+            raw = payload.get(key, self._cfg(key, default))
+            if raw in (None, ""):
+                raw = default
+            try:
+                value = int(raw)
+            except (TypeError, ValueError):
+                return self._err(f"{key} 需要是整数")
+            if not low <= value <= high:
+                return self._err(f"{key} 需在 {low}-{high} 之间")
+            long_numbers[key] = value
+        raw_line_height = payload.get("typst_line_height", self._cfg("typst_line_height", 1.8))
+        if raw_line_height in (None, ""):
+            raw_line_height = 1.8
+        try:
+            line_height = round(float(raw_line_height), 3)
+        except (TypeError, ValueError):
+            return self._err("typst_line_height 需要是数字")
+        if not 1.0 <= line_height <= 3.0:
+            return self._err("typst_line_height 需在 1.0-3.0 之间")
+        theme = str(payload.get("typst_long_theme", self._cfg("typst_long_theme", "dark")) or "dark")
+        if theme not in ("dark", "light"):
+            return self._err("typst_long_theme 只能是 dark 或 light")
+
         raw_ppi = payload.get("typst_ppi", self._cfg("typst_ppi", 144))
         raw_timeout = payload.get("typst_timeout", self._cfg("typst_timeout", 60))
         try:
@@ -646,6 +696,10 @@ class NewsPageController:
             )
             config["typst_ppi"] = typst_ppi
             config["typst_timeout"] = typst_timeout
+            config["typst_long_theme"] = theme
+            config["typst_line_height"] = line_height
+            for key, value in long_numbers.items():
+                config[key] = value
         except Exception as exc:
             return self._err(f"写入配置失败：{exc}", status_code=500)
         saver = getattr(self.plugin, "save_config_now", None)
@@ -663,6 +717,9 @@ class NewsPageController:
                 "typst_enabled": bool(config.get("typst_enabled", True)),
                 "typst_ppi": typst_ppi,
                 "typst_timeout": typst_timeout,
+                "typst_long_theme": theme,
+                "typst_line_height": line_height,
+                **long_numbers,
             },
             "Long-image settings saved",
         )

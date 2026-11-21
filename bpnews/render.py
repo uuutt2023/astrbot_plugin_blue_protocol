@@ -12,6 +12,8 @@ import html as html_lib
 from pathlib import Path
 from typing import Any
 
+from . import layout
+
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
 ARTICLE_TEMPLATE = _TEMPLATE_DIR / "article.html"
 CARD_TEMPLATE = _TEMPLATE_DIR / "card.html"
@@ -32,8 +34,42 @@ def _cover_block(cover: str) -> str:
     return f'<img class="cover" src="{safe}" alt="">'
 
 
-def render_article(detail: dict[str, Any]) -> str:
-    """把公告详情 dict 渲染成整页 HTML（给 Playwright 截图用）。"""
+def _style_css(spec: dict[str, Any]) -> str:
+    """把版式表转成 CSS 变量（和 Typst 长图同一份定义）。"""
+    colors = spec["colors"]
+    type_scale = spec["type"]
+    def px(value: float) -> str:
+        """整数值不要小数尾巴（17 而不是 17.0）。"""
+        number = float(value)
+        return f"{int(number)}px" if number.is_integer() else f"{round(number, 2)}px"
+
+    values = {
+        "--page-w": f"{spec['width']}px",
+        "--body-w": f"{spec['body']}px",
+        "--border": f"{spec['border']}px",
+        "--para-gap": px(spec["para_spacing"]),
+        "--line-height": str(spec["line_height"]),
+        "--banner-h": px(type_scale["banner"]),
+        "--pad-top": px(type_scale["pad_top"]),
+        "--cover-h": px(type_scale["cover_h"]),
+        "--font-tag": px(type_scale["font_tag"]),
+        "--font-title": px(type_scale["font_title"]),
+        "--font-meta": px(type_scale["font_meta"]),
+        "--font-body": px(type_scale["font_body"]),
+        "--font-link": px(type_scale["font_link"]),
+        "--font-foot": px(type_scale["font_foot"]),
+    }
+    for key, value in colors.items():
+        values[f"--{key.replace('_', '-')}"] = value
+    return "\n".join(f"  {key}: {value};" for key, value in values.items())
+
+
+def render_article(detail: dict[str, Any], **layout_options: Any) -> str:
+    """把公告详情 dict 渲染成整页 HTML（给 Playwright 截图用）。
+
+    ``layout_options`` 接受画布宽度/正文宽度/边框/主题/段间距/行高，
+    缺省时用 :mod:`bpnews.layout` 的默认值。
+    """
     tmpl = _read(ARTICLE_TEMPLATE)
     title = str(detail.get("title") or "").strip()
     tag = str(detail.get("tag") or "").strip() or "公告"
@@ -45,6 +81,8 @@ def render_article(detail: dict[str, Any]) -> str:
     if not content:
         content = "<p>（这条公告没有正文内容，点击原文链接查看）</p>"
 
+    spec = layout.resolve(**layout_options)
+
     replacements = {
         "{{TAG}}": f'<span class="tag">{html_lib.escape(tag)}</span>',
         "{{TITLE}}": html_lib.escape(title),
@@ -52,6 +90,7 @@ def render_article(detail: dict[str, Any]) -> str:
         "{{COVER}}": _cover_block(cover),
         "{{CONTENT}}": content,
         "{{URL}}": html_lib.escape(url),
+        "{{STYLE}}": _style_css(spec),
     }
     for key, value in replacements.items():
         tmpl = tmpl.replace(key, value)

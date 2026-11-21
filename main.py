@@ -26,7 +26,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-from bpnews import api, screenshot
+from bpnews import api, layout, screenshot
 from bpnews.typst import render as typst_render
 from bpnews.api import TAG_ALL, resolve_tag, tag_display_name
 from bpnews.groups import (
@@ -724,6 +724,32 @@ class BlueProtocolNewsPlugin(Star):
             "font_url": str(self.config.get("typst_font_url", "") or "") or None,
         }
 
+    def _long_image_options(self) -> dict:
+        """长图版式配置（画布宽度/正文宽度/边框/主题/段间距/行高）。"""
+        return {
+            "width": int(
+                self.config.get("typst_long_width", layout.DEFAULT_WIDTH)
+                or layout.DEFAULT_WIDTH
+            ),
+            "body_width": int(
+                self.config.get("typst_long_body_width", layout.DEFAULT_BODY_WIDTH)
+                or 0
+            ),
+            "border": int(
+                self.config.get("typst_long_border", layout.DEFAULT_BORDER)
+                or 0
+            ),
+            "theme": str(self.config.get("typst_long_theme", layout.DEFAULT_THEME) or ""),
+            "para_spacing": float(
+                self.config.get("typst_para_spacing", layout.DEFAULT_PARA_SPACING)
+                or 0
+            ),
+            "line_height": float(
+                self.config.get("typst_line_height", layout.DEFAULT_LINE_HEIGHT)
+                or layout.DEFAULT_LINE_HEIGHT
+            ),
+        }
+
     async def _news_image(
         self, it: dict, detail: dict, summary: str
     ) -> tuple[str | None, str]:
@@ -738,6 +764,7 @@ class BlueProtocolNewsPlugin(Star):
         note = ""
         use_typst = bool(self.config.get("typst_enabled", True))
         options = self._typst_options()
+        long_options = self._long_image_options()
 
         if use_typst:
             try:
@@ -751,6 +778,7 @@ class BlueProtocolNewsPlugin(Star):
                     ),
                     quality=int(self.config.get("shot_quality", screenshot.JPEG_QUALITY)),
                     font_url=options["font_url"],
+                    **long_options,
                 )
                 if truncated:
                     note = "\n\n（这条公告比较长，图片只显示前半部分，完整内容请点链接查看。）"
@@ -760,7 +788,7 @@ class BlueProtocolNewsPlugin(Star):
 
         if self.config.get("shot_enabled", True):
             try:
-                html = render_article(detail or it)
+                html = render_article(detail or it, **long_options)
                 path, truncated = await screenshot.shot_article(
                     html,
                     str(it.get("news_id") or it.get("url") or it.get("title")),
@@ -768,6 +796,7 @@ class BlueProtocolNewsPlugin(Star):
                         self.config.get("shot_max_height", screenshot.MAX_HEIGHT)
                     ),
                     quality=int(self.config.get("shot_quality", screenshot.JPEG_QUALITY)),
+                    width=long_options["width"],
                 )
                 screenshot.clean_shots()
                 if truncated:

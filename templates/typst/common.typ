@@ -1,22 +1,30 @@
-// 共享样式：颜色、字体、KV 遮罩、正文行内片段。
+// 共享样式：调色板、字体、KV 遮罩、正文行内片段。
 //
 // 排版方案参考 SXP-Simon/astrbot_plugin_qq_group_daily_analysis：
-// 版心按 144 PPI 栅格化，长图 195pt ≈ 390px、卡片 400pt ≈ 800px。
+// 版式参数由宿主侧算好（px → pt）写进 data.json，模板只负责排版，
 // 正文一律来自 data.json 的字符串，模板不执行任何外部代码。
 //
 // 渐变角度（Typst 实测）：0°=左→右，90°=上→下，45°=左上→右下。
 
-#let c = (
-  bg: rgb("0F1218"),
-  text: rgb("ECEDF2"),
-  body: rgb("E4E6EC"),
-  muted: rgb("A8ACB8"),
-  dim: rgb("8A8E9C"),
-  gold: rgb("FFD76E"),
-  link: rgb("9CC0F5"),
-  line: rgb("2A3040"),
-  accent: rgb("4FC3F7"),
-)
+// 配色由宿主侧写进 data.json（data.colors），Typst 与 HTML 两条路共用同一份，
+// 主题切换不会出现「一边深色一边浅色」。
+#let palette(d) = {
+  let c = d.at("colors", default: (:))
+  (
+    bg: rgb(c.at("bg", default: "0F1218")),
+    text: rgb(c.at("text", default: "ECEDF2")),
+    body: rgb(c.at("body", default: "E4E6EC")),
+    muted: rgb(c.at("muted", default: "A8ACB8")),
+    dim: rgb(c.at("dim", default: "8A8E9C")),
+    gold: rgb(c.at("gold", default: "FFD76E")),
+    link: rgb(c.at("link", default: "9CC0F5")),
+    line: rgb(c.at("line", default: "2A3040")),
+    chip: rgb(c.at("chip", default: "2C281B")),
+    panel: rgb(c.at("panel", default: "11151F")),
+    kv_text: rgb(c.at("kv_text", default: "E6E9F0")),
+    accent: rgb(c.at("accent", default: "4FC3F7")),
+  )
+}
 
 // 字体名由宿主侧解析后写进 data.json（data.font），
 // 避免模板里列一堆系统上并不存在的字族而刷出一屏 warning。
@@ -37,7 +45,7 @@
 )
 
 // 公告正文行内片段。片段文本是 JSON 字符串，Typst 按纯文本渲染，无需转义。
-#let runs(parts) = {
+#let runs(parts, c) = {
   for part in parts {
     if "br" in part {
       linebreak()
@@ -52,18 +60,18 @@
 }
 
 // 官方 KV 横幅（长图顶部）。width / height 是版心内的实际尺寸。
-#let kv_banner(width, height, url: "kv.jpg") = box(width: width, height: height)[
+#let kv_banner(width, height, url: "kv.jpg", c) = box(width: width, height: height)[
   #if url != "" {
     [#place(top + left, image(url, width: width, height: height, fit: "cover"))]
   }
   #place(top + left, rect(width: width, height: height, fill: fade_down()))
-  #place(bottom + left, box(width: width, inset: (x: 9pt, y: 7pt))[
-    #text(size: 7pt, weight: "bold", fill: c.gold, tracking: 0.3pt,
+  #place(bottom + left, box(width: width, inset: (x: 18pt, y: 14pt))[
+    #text(size: 7.5pt, weight: "bold", fill: c.gold, tracking: 0.3pt,
       stroke: 0.5pt + rgb("0A0C14").transparentize(40%))[
       BLUE PROTOCOL · STAR RESONANCE
     ]
-    #h(3pt)
-    #text(size: 6pt, fill: rgb("E6E9F0"),
+    #h(4pt)
+    #text(size: 6.5pt, fill: c.kv_text,
       stroke: 0.4pt + rgb("0A0C14").transparentize(45%))[官方公告]
   ])
 ]

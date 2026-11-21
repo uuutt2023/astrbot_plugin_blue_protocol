@@ -32,7 +32,18 @@ def _read(path: Path) -> str:
 class TypstSurfaceTests(unittest.TestCase):
     """Typst 排版相关的配置与文案必须双语齐备。"""
 
-    CONFIG_KEYS = ("typst_enabled", "typst_ppi", "typst_timeout", "typst_font_url")
+    CONFIG_KEYS = (
+        "typst_enabled",
+        "typst_ppi",
+        "typst_timeout",
+        "typst_font_url",
+        "typst_long_width",
+        "typst_long_body_width",
+        "typst_long_border",
+        "typst_long_theme",
+        "typst_para_spacing",
+        "typst_line_height",
+    )
 
     def test_conf_schema_has_typst_keys(self):
         schema = json.loads(_read(ROOT / "_conf_schema.json"))
@@ -61,6 +72,29 @@ class TypstSurfaceTests(unittest.TestCase):
         self.assertIn("typst_enabled", js)
         self.assertIn("renderTypstStatus", js)
 
+    def test_panel_has_layout_fields(self):
+        """面板要有主题/宽度/边框/段间距/行高这些字段。"""
+        html = _read(PANEL / "index.html")
+        for field in (
+            "cfgTypstTheme",
+            "cfgTypstWidth",
+            "cfgTypstBodyWidth",
+            "cfgTypstBorder",
+            "cfgTypstParaSpacing",
+            "cfgTypstLineHeight",
+        ):
+            self.assertIn(f'id="{field}"', html, field)
+        js = _read(PANEL / "app.js")
+        for key in (
+            "typst_long_theme",
+            "typst_long_width",
+            "typst_long_body_width",
+            "typst_long_border",
+            "typst_para_spacing",
+            "typst_line_height",
+        ):
+            self.assertIn(key, js, key)
+
     def test_panel_i18n_has_typst_keys(self):
         i18n = _read(PANEL / "i18n.js")
         for key in (
@@ -72,8 +106,27 @@ class TypstSurfaceTests(unittest.TestCase):
             "typst.font.managed",
             "typst.font.system",
             "typst.font.none",
+            "lbl.typstTheme",
+            "opt.themeDark",
+            "opt.themeLight",
+            "lbl.canvasWidth",
+            "lbl.bodyWidth",
+            "lbl.borderWidth",
+            "lbl.paraSpacing",
+            "lbl.lineHeight",
         ):
             self.assertIn(key, i18n, key)
+
+    def test_layout_module_is_shared(self):
+        """版式定义要放在 bpnews/layout.py，Typst 与 HTML 共用一份。"""
+        layout_src = _read(ROOT / "bpnews" / "layout.py")
+        self.assertIn("DEFAULT_WIDTH = 1280", layout_src)
+        self.assertIn("DEFAULT_BODY_WIDTH = 1258", layout_src)
+        self.assertIn("DEFAULT_BORDER = 11", layout_src)
+        self.assertIn('"light"', layout_src)
+        # Typst 与 HTML 都得引它
+        self.assertIn("from .. import layout", _read(ROOT / "bpnews" / "typst" / "render.py"))
+        self.assertIn("from . import layout", _read(ROOT / "bpnews" / "render.py"))
 
     def test_requirements_declares_typst(self):
         req = _read(ROOT / "requirements.txt")

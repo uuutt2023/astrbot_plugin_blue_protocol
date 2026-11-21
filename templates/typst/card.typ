@@ -7,6 +7,8 @@
 //   ④ 文案放在半透明深色板上，压在高亮底图上也读得清。
 #import "common.typ": *
 #let d = json("data.json")
+// 卡片是压在高亮 KV 上的分享图，固定深色配色。
+#let c = palette(d)
 
 #set page(width: 400pt, height: 360pt, margin: 0pt)
 #set text(font: font_of(d), size: 9pt, fill: c.body)

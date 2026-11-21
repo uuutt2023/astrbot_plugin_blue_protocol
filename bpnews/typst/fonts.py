@@ -88,11 +88,20 @@ def system_families() -> list[str]:
         import typst
     except ImportError:
         return []
-    try:
-        fonts = typst.Fonts(include_system_fonts=True)
-        return list(fonts.families())
-    except Exception:  # noqa: BLE001
-        return []
+    # 不同 typst-py 版本的 font_paths 默认值不一样（None 会直接抛错），
+    # 这里两种写法都试一遍。
+    for kwargs in (
+        {"include_system_fonts": True, "font_paths": []},
+        {"include_system_fonts": True},
+    ):
+        try:
+            fonts = typst.Fonts(**kwargs)
+            families = list(fonts.families())
+        except Exception:  # noqa: BLE001
+            continue
+        if families:
+            return families
+    return []
 
 
 def resolve(data_dir: Path) -> dict:

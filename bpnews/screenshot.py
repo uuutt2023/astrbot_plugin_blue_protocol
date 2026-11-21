@@ -3,7 +3,7 @@
 
 和「截官网网页」不同，这里是**自己渲染**：《星痕共鸣》的公告正文由
 ``searchNews.php`` 接口直接给 HTML（``msg.sContent``），套进
-``templates/article.html`` 后用 Playwright 以 390×844 手机视口整页截图。
+``templates/article.html`` 后用 Playwright 按配置的画布宽度整页截图。
 好处是内容完整、不依赖官网那个 JS 渲染的 SPA、也不会被活动页弹窗干扰。
 
 浏览器组件由插件首次使用时自动后台下载（``playwright install chromium``，
@@ -20,9 +20,19 @@ from pathlib import Path
 
 from astrbot.api import logger
 
-VIEWPORT_W = 390
+VIEWPORT_W = 1280
 VIEWPORT_H = 844
-DEVICE_SCALE = 2
+DEVICE_SCALE = 1
+
+_USER_AGENT_MOBILE = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+    "Mobile/15E148 Safari/604.1"
+)
+_USER_AGENT_DESKTOP = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+)
 
 MAX_HEIGHT = 5000  # 默认截断高度（CSS px），0 表示不截断
 JPEG_QUALITY = 88
@@ -164,11 +174,16 @@ def _shrink_to_budget(path: Path, max_bytes: int) -> None:
 
 
 async def _page_size(page) -> tuple[int, int]:
-    """页面真实宽高（CSS px）。"""
+    """页面真实宽高（CSS px）。
+
+    高度取 body 的实际盒子高度而不是 documentElement 的 scrollHeight ——
+    后者至少等于视口高度，画布比内容高时会多截一段空白。
+    """
     box = await page.evaluate(
         "() => {const d=document.documentElement, b=document.body||{};"
-        "return [Math.max(d.scrollWidth, b.scrollWidth||0),"
-        " Math.max(d.scrollHeight, b.scrollHeight||0)];}"
+        "const r=b.getBoundingClientRect();"
+        "return [Math.max(d.scrollWidth, b.scrollWidth||0, Math.ceil(r.width||0)),"
+        " Math.max(Math.ceil(r.height||0), b.scrollHeight||0)];}"
     )
     return int(box[0]), int(box[1])
 
@@ -191,6 +206,7 @@ async def shot_article(
     max_height: int = MAX_HEIGHT,
     quality: int = JPEG_QUALITY,
     max_bytes: int = MAX_BYTES,
+    width: int = VIEWPORT_W,
 ) -> tuple[str, bool]:
     """把一段 HTML 渲染成手机视口长图，返回 (jpg 路径, 是否因过长被截断)。
 
@@ -212,16 +228,14 @@ async def shot_article(
     browser = None
     try:
         browser = await pw.chromium.launch(args=["--no-sandbox"])
+        viewport_w = max(320, int(width or VIEWPORT_W))
+        mobile = viewport_w <= 600
         ctx = await browser.new_context(
-            viewport={"width": VIEWPORT_W, "height": VIEWPORT_H},
+            viewport={"width": viewport_w, "height": VIEWPORT_H},
             device_scale_factor=DEVICE_SCALE,
-            user_agent=(
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
-                "Mobile/15E148 Safari/604.1"
-            ),
-            is_mobile=True,
-            has_touch=True,
+            user_agent=_USER_AGENT_MOBILE if mobile else _USER_AGENT_DESKTOP,
+            is_mobile=mobile,
+            has_touch=mobile,
             locale="zh-CN",
         )
         page = await ctx.new_page()

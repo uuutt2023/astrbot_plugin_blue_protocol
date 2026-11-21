@@ -3,9 +3,9 @@
 **Blue Protocol: Star Resonance** (《蓝色协议：星痕共鸣》) official announcement bot for AstrBot.
 《蓝色协议：星痕共鸣》官方公告推送插件 —— 公告列表、最新公告长图、按群去重、定时推送，带 Web 面板。
 
-Announcement list with paging and categories, latest announcement with a summary and a phone-sized long image, per-group deduplication, scheduled auto-push, plus a web panel for managing push targets by group name.
+Announcement list with paging and categories, latest announcement with a summary and a browser-width long image, per-group deduplication, scheduled auto-push, plus a web panel for managing push targets by group name.
 
-公告列表支持分页与分类；最新公告带正文摘要与手机长图；按群去重；每 5 分钟检查一次自动推送；Web 面板可按群名管理推送群、手动推送、查看长图缓存。
+公告列表支持分页与分类；最新公告带正文摘要与浏览器宽度长图；按群去重；每 5 分钟检查一次自动推送；Web 面板可按群名管理推送群、手动推送、查看长图缓存。
 
 Data comes from the Tencent game announcement API behind the official site (`apps.game.qq.com/wmp/v3.1/`) — both the list and the article body are served straight from the API, no HTML scraping.
 
@@ -24,9 +24,22 @@ Data comes from the Tencent game announcement API behind the official site (`app
 - 中文字体按「插件数据目录 → 系统字体 → 首次使用时自动下载」的顺序解析；解析出的字体名会写进数据里传给模板，不会再出现“unknown font family”警告。
 - Typst 是**首选**渲染方式；装不上或出错时会依次回退到浏览器长图 → Typst 卡片 → `html_render` 卡片，图片照样能出。
 
+版式尺寸全部按 **CSS 像素**算，和浏览器一致：
+
+| 项目 | 默认 | 配置项 |
+|---|---|---|
+| 画布宽度 | `1280` px（常见浏览器宽度） | `typst_long_width` |
+| 正文栏宽度 | `1258` px | `typst_long_body_width` |
+| 正文两侧边框 | `11` px | `typst_long_border` |
+| 主题 | `dark`（可切 `light`） | `typst_long_theme` |
+| 段落间距 | `14` px | `typst_para_spacing` |
+| 行高 | `1.8` | `typst_line_height` |
+
+Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），两条路出来的图长得一样。
+
 ## 公告长图
 
-公告正文由接口直接给 HTML，插件套进自带模板后用 Playwright 以 390×844 手机视口整页截图 —— 内容完整、不依赖官网那个 JS 渲染的 SPA。
+公告正文由接口直接给 HTML，插件套进自带模板后整页排版 —— 内容完整、不依赖官网那个 JS 渲染的 SPA。画布默认是完整浏览器宽度，正文和网页正文一样宽。
 
 ![公告长图预览](docs/images/news-longimage-preview.jpg)
 
@@ -81,13 +94,19 @@ Data comes from the Tencent game announcement API behind the official site (`app
 |---|---|---|
 | `news_groups` | `[]` | 定时推送的群（填**群号**或 unified_msg_origin，可多个）。也可以在群里发 `bp push on` 自动登记本群，**或直接在插件面板里按群名勾选** |
 | `list_page_size` | `10` | 公告列表每页条数（1-30） |
-| `shot_enabled` | `true` | 公告图用手机整页长图；关掉则回到深色卡片图 |
+| `shot_enabled` | `true` | 公告图用整页长图；关掉则回到深色卡片图 |
 | `shot_max_height` | `5000` | 长图最大高度（CSS 像素，0 = 不截断）。超长公告截取前面部分，文字消息里提示看链接 |
 | `shot_quality` | `88` | 长图 JPEG 质量。成图超过 2.5MB 会自动继续降质/缩放 |
 | `typst_enabled` | `true` | 用本地 Typst 编译器排版公告图（首选渲染方式）；关掉则改用浏览器截图 |
 | `typst_ppi` | `144` | Typst 导出密度（PPI，72-300）。越高越清晰，体积也越大 |
 | `typst_timeout` | `60` | 单次 Typst 排版的超时秒数（5-600）。超时会终止编译进程 |
 | `typst_font_url` | `""` | 中文字体下载地址（可选），系统没有中文字体时才会用到 |
+| `typst_long_width` | `1280` | 长图画布宽度（像素），默认取常见浏览器宽度 |
+| `typst_long_body_width` | `1258` | 正文栏宽度（像素）；填 0 表示自动跟随画布宽度减去两侧边框 |
+| `typst_long_border` | `11` | 正文栏左右两侧的边框宽度（像素） |
+| `typst_long_theme` | `dark` | 长图主题：`dark` 深色 / `light` 浅色（分享卡片始终是深色） |
+| `typst_para_spacing` | `14` | 段落间距（像素） |
+| `typst_line_height` | `1.8` | 行高（倍数） |
 
 ## Web 面板用法
 
@@ -96,7 +115,7 @@ AstrBot WebUI → 插件 → Blue Protocol: Star Resonance → 打开面板（�
 - **推送群**：按**群名**勾选要推送的群，不用记群号；`选择群…` 里可以搜索群名或群号，还能「刷新群列表」把机器人所在的全部群一次拉出来。
 - **立刻检查并推送**：不用等 5 分钟轮询周期；单群「测试推送」还能强制重发，用来验证群里到底收不收得到。
 - **推送记录**：每个群上次推的公告标题，支持单群/全部重置。
-- **截图缓存**：公告长图缩略图 + 占用空间，一键清空；长图参数（开关/最大高度/质量）和 Typst 开关也能在面板里改，面板还会显示当前用的是哪套中文字体。
+- **截图缓存**：公告长图缩略图 + 占用空间，一键清空；长图参数（开关/最大高度/质量）、Typst 开关，以及长图的主题/画布宽度/正文栏宽度/边框宽度/段间距/行高都能在面板里改，面板还会显示当前用的是哪套中文字体。
 
 > 群名单里填**裸群号**时，插件会把它补成「平台**实例 id** + GroupMessage + 群号」（例如 `napcat:GroupMessage:123`）。要填实例 id 而不是适配器类型名：AstrBot 的 `send_message` 按实例 id 匹配平台，写 `aiocqhttp:GroupMessage:123` 这种发不出去。
 

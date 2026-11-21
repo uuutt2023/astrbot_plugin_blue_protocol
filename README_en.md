@@ -3,9 +3,9 @@
 **Blue Protocol: Star Resonance** (《蓝色协议：星痕共鸣》) official announcement bot for AstrBot.
 《蓝色协议：星痕共鸣》官方公告推送插件 —— 公告列表、最新公告长图、按群去重、定时推送，带 Web 面板。
 
-Announcement list with paging and categories, latest announcement with a summary and a phone-sized long image, per-group deduplication, scheduled auto-push, plus a web panel for managing push targets by group name.
+Announcement list with paging and categories, latest announcement with a summary and a browser-width long image, per-group deduplication, scheduled auto-push, plus a web panel for managing push targets by group name.
 
-公告列表支持分页与分类；最新公告带正文摘要与手机长图；按群去重；每 5 分钟检查一次自动推送；Web 面板可按群名管理推送群、手动推送、查看长图缓存。
+公告列表支持分页与分类；最新公告带正文摘要与浏览器宽度长图；按群去重；每 5 分钟检查一次自动推送；Web 面板可按群名管理推送群、手动推送、查看长图缓存。
 
 Data comes from the Tencent game announcement API behind the official site (`apps.game.qq.com/wmp/v3.1/`) — both the list and the article body are served straight from the API, no HTML scraping.
 
@@ -24,9 +24,22 @@ Announcement images are typeset **locally with [Typst](https://typst.app/)** —
 - The CJK font is resolved from the plugin data directory first, then from system fonts, and finally downloaded once on first use. The resolved family name is passed to the template, so no “unknown font family” warnings.
 - Typst is the **primary** renderer. If it is missing or fails, the plugin falls back to the Playwright long image, then to the Typst card, and finally to the `html_render` card — images keep working either way.
 
+The layout is measured in **CSS pixels**, just like in a browser:
+
+| What | Default | Config key |
+|---|---|---|
+| Canvas width | `1280` px (a typical browser width) | `typst_long_width` |
+| Text column width | `1258` px | `typst_long_body_width` |
+| Border on both sides of the column | `11` px | `typst_long_border` |
+| Theme | `dark` (or `light`) | `typst_long_theme` |
+| Paragraph spacing | `14` px | `typst_para_spacing` |
+| Line height | `1.8` | `typst_line_height` |
+
+Both renderers share one layout definition (`bpnews/layout.py`), so the Typst image and the Playwright fallback come out looking the same.
+
 ## Announcement long image
 
-The announcement body is returned as HTML by the API, so the plugin renders it through its own template and takes a full-page screenshot at a 390×844 phone viewport — the content is complete, and it does not depend on the official site's JavaScript-rendered SPA.
+The announcement body is returned as HTML by the API, so the plugin renders it through its own template — the content is complete, and it does not depend on the official site's JavaScript-rendered SPA. The canvas defaults to a full browser width, so the body text is as wide as a desktop page.
 
 ![Announcement long image preview](docs/images/news-longimage-preview.jpg)
 
@@ -104,13 +117,19 @@ The announcement titles and bodies themselves stay in the game's original Chines
 |---|---|---|
 | `news_groups` | `[]` | Groups that receive scheduled pushes (a **group id** or `unified_msg_origin`, multiple allowed). You can also send `bp push on` in a group, or **tick groups by name in the plugin panel** |
 | `list_page_size` | `10` | Announcements per page in `bp list` (1-30) |
-| `shot_enabled` | `true` | Render announcements as a phone-sized long image; when off it falls back to the dark card image |
+| `shot_enabled` | `true` | Render announcements as a long image; when off it falls back to the dark card image |
 | `shot_max_height` | `5000` | Maximum long-image height in CSS pixels (0 = no limit). Very long announcements are cut here and the text message points to the link |
 | `shot_quality` | `88` | Long-image JPEG quality. Images above 2.5 MB are downscaled automatically |
 | `typst_enabled` | `true` | Typeset announcement images with the local Typst compiler (primary renderer); when off the plugin uses browser screenshots |
 | `typst_ppi` | `144` | Typst export density in PPI (72-300). Higher means sharper and larger |
 | `typst_timeout` | `60` | Time limit for one Typst run in seconds (5-600). On timeout the compile process is killed |
 | `typst_font_url` | `""` | Optional CJK font download URL, used when the system has no Chinese font |
+| `typst_long_width` | `1280` | Long-image canvas width in pixels (a typical browser width) |
+| `typst_long_body_width` | `1258` | Text column width in pixels; `0` follows the canvas width minus the borders |
+| `typst_long_border` | `11` | Border on both sides of the text column, in pixels |
+| `typst_long_theme` | `dark` | Long-image theme: `dark` or `light` (the share card always stays dark) |
+| `typst_para_spacing` | `14` | Paragraph spacing in pixels |
+| `typst_line_height` | `1.8` | Line height multiplier |
 
 ## Web panel (the recommended way to manage push targets)
 
@@ -159,6 +178,7 @@ python tests/test_blueprotocol_main.py # main.py wiring and push flow
 python tests/test_metadata.py          # packaging contract (metadata / conf schema / i18n)
 python tests/test_panel_layout_ui.py   # panel UI in a real browser (needs Playwright)
 python tests/test_typst_render.py      # local Typst typesetting (needs the typst package)
+python tests/test_layout.py            # long-image layout shared by both renderers
 python tools/make_logo.py              # regenerate logo.png / the panel icon
 ```
 

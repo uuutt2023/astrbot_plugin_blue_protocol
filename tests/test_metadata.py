@@ -157,6 +157,7 @@ def test_plugin_files_present():
         os.path.join("pages", "blueprotocol-panel", "app.js"),
         os.path.join("pages", "blueprotocol-panel", "style.css"),
         os.path.join("pages", "blueprotocol-panel", "blueprotocol-icon.png"),
+        os.path.join("bpnews", "layout.py"),
         os.path.join("bpnews", "typst", "__init__.py"),
         os.path.join("bpnews", "typst", "render.py"),
         os.path.join("bpnews", "typst", "worker.py"),
@@ -167,6 +168,8 @@ def test_plugin_files_present():
         os.path.join("templates", "typst", "long_image.typ"),
         os.path.join("templates", "typst", "card.typ"),
         os.path.join("tools", "make_previews.py"),
+        os.path.join("tests", "test_layout.py"),
+        os.path.join("tests", "test_typst_render.py"),
     ]
     missing = [p for p in required if not os.path.isfile(os.path.join(_ROOT, p))]
     assert not missing, f"缺少文件：{missing}"

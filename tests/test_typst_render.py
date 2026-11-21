@@ -88,6 +88,78 @@ class HtmlToBlocksTests(unittest.TestCase):
         self.assertIn("\n", text)
 
 
+class LayoutTests(unittest.TestCase):
+    """版式参数（几何/主题/段间距/行高）。"""
+
+    def test_defaults_match_browser_width(self):
+        from bpnews import layout
+
+        spec = layout.resolve()
+        assert spec["width"] == 1280
+        assert spec["body"] == 1258
+        assert spec["border"] == 11
+        assert spec["theme"] == "dark"
+        assert spec["para_spacing"] == 14
+        assert spec["line_height"] == 1.8
+
+    def test_body_width_zero_follows_canvas(self):
+        from bpnews import layout
+
+        spec = layout.resolve(width=1000, body_width=0, border=20)
+        assert spec["body"] == 1000 - 40
+
+    def test_body_width_cannot_exceed_canvas(self):
+        from bpnews import layout
+
+        spec = layout.resolve(width=800, body_width=5000, border=11)
+        assert spec["body"] <= spec["width"]
+        assert spec["body"] + 2 * spec["border"] <= spec["width"] + 1
+
+    def test_invalid_theme_falls_back(self):
+        from bpnews import layout
+
+        assert layout.resolve(theme="blue")["theme"] == "dark"
+        assert layout.resolve(theme="LIGHT")["theme"] == "light"
+
+    def test_out_of_range_values_are_clamped(self):
+        from bpnews import layout
+
+        spec = layout.resolve(width=10, border=-5, para_spacing=9999, line_height=99)
+        assert spec["width"] >= 320
+        assert spec["border"] >= 0
+        assert spec["para_spacing"] <= 120
+        assert spec["line_height"] <= 3.0
+
+    def test_both_themes_have_full_palette(self):
+        from bpnews import layout
+
+        for theme in layout.THEMES:
+            colors = layout.THEME_COLORS[theme]
+            for key in ("bg", "text", "body", "muted", "dim", "gold", "link", "line",
+                        "chip", "panel", "kv_text", "accent"):
+                assert colors[key].startswith("#"), f"{theme}/{key}"
+                assert len(colors[key]) == 7, f"{theme}/{key}"
+
+    def test_fingerprint_changes_with_layout(self):
+        from bpnews import layout
+
+        a = layout.fingerprint(layout.resolve())
+        b = layout.fingerprint(layout.resolve(theme="light"))
+        c = layout.fingerprint(layout.resolve(width=1600))
+        assert a != b and a != c and b != c
+
+    def test_typst_style_converts_px_to_pt(self):
+        style = render.long_style(width=1280, ppi=144)
+        assert style["scale"] == 0.5
+        assert style["width"] == 1280
+        assert style["body"] == 1258
+        assert style["border"] == 11
+        assert style["leading"] == 1.8
+        assert style["spacing"] == 14
+        # 144 PPI 下 1px = 0.5pt，画布就是 640pt
+        assert round(style["width"] * style["scale"], 3) == 640.0
+
+
 class FontTests(unittest.TestCase):
     """字体解析。"""
 
@@ -181,7 +253,7 @@ class TypstRenderTests(unittest.TestCase):
         from PIL import Image
 
         with Image.open(path) as im:
-            self.assertEqual(im.width, 390)
+            self.assertEqual(im.width, 1280)
 
     def test_render_long_image_truncates(self):
         path, truncated = asyncio.run(
@@ -202,6 +274,46 @@ class TypstRenderTests(unittest.TestCase):
 
         with Image.open(path) as im:
             self.assertEqual(im.size, (800, 720))
+
+    def test_render_uses_configured_width(self):
+        """画布宽度、正文宽度、边框都按配置来。"""
+        path, _ = asyncio.run(
+            render.render_long_image(
+                self._detail(),
+                self.data_dir,
+                max_height=0,
+                width=1000,
+                body_width=900,
+                border=50,
+            )
+        )
+        from PIL import Image
+
+        with Image.open(path) as im:
+            self.assertEqual(im.width, 1000)
+
+    def test_light_theme_renders(self):
+        path, _ = asyncio.run(
+            render.render_long_image(self._detail(), self.data_dir, max_height=0, theme="light")
+        )
+        self.assertTrue(path.is_file())
+        # 浅色主题：左上角应该是白底（深色主题是近黑）
+        from PIL import Image
+
+        with Image.open(path) as im:
+            rgb = im.convert("RGB")
+            self.assertGreater(sum(rgb.getpixel((5, im.height - 5))) / 3, 200)
+
+    def test_theme_changes_cache_key(self):
+        dark = asyncio.run(
+            render.render_long_image(self._detail(), self.data_dir, max_height=0)
+        )[0]
+        light = asyncio.run(
+            render.render_long_image(
+                self._detail(), self.data_dir, max_height=0, theme="light"
+            )
+        )[0]
+        self.assertNotEqual(dark, light)
 
     def test_render_is_cached(self):
         first = asyncio.run(

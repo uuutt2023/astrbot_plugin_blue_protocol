@@ -245,6 +245,15 @@
     byId("cfgShotHeight").value = cfg.shot_max_height == null ? "5000" : cfg.shot_max_height;
     byId("cfgShotQuality").value = cfg.shot_quality == null ? "88" : cfg.shot_quality;
     byId("cfgTypstEnabled").value = cfg.typst_enabled === false ? "0" : "1";
+    byId("cfgTypstTheme").value = cfg.typst_long_theme || "dark";
+    byId("cfgTypstWidth").value = cfg.typst_long_width == null ? "1280" : cfg.typst_long_width;
+    byId("cfgTypstBodyWidth").value =
+      cfg.typst_long_body_width == null ? "1258" : cfg.typst_long_body_width;
+    byId("cfgTypstBorder").value = cfg.typst_long_border == null ? "11" : cfg.typst_long_border;
+    byId("cfgTypstParaSpacing").value =
+      cfg.typst_para_spacing == null ? "14" : cfg.typst_para_spacing;
+    byId("cfgTypstLineHeight").value =
+      cfg.typst_line_height == null ? "1.8" : cfg.typst_line_height;
     renderTypstStatus();
   }
 
@@ -415,7 +424,13 @@
       shot_enabled: byId("cfgShotEnabled").value === "1",
       shot_max_height: byId("cfgShotHeight").value.trim(),
       shot_quality: byId("cfgShotQuality").value.trim(),
-      typst_enabled: byId("cfgTypstEnabled").value === "1"
+      typst_enabled: byId("cfgTypstEnabled").value === "1",
+      typst_long_theme: byId("cfgTypstTheme").value,
+      typst_long_width: byId("cfgTypstWidth").value.trim(),
+      typst_long_body_width: byId("cfgTypstBodyWidth").value.trim(),
+      typst_long_border: byId("cfgTypstBorder").value.trim(),
+      typst_para_spacing: byId("cfgTypstParaSpacing").value.trim(),
+      typst_line_height: byId("cfgTypstLineHeight").value.trim()
     }).then(function () {
       byId("cfgHint").textContent = "";
       return loadMeta().then(function () { toast(t('toast.settingsSaved')); });
