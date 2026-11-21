@@ -51,7 +51,6 @@ def _style_css(spec: dict[str, Any]) -> str:
         "--line-height": str(spec["line_height"]),
         "--banner-h": px(type_scale["banner"]),
         "--pad-top": px(type_scale["pad_top"]),
-        "--cover-h": px(type_scale["cover_h"]),
         "--font-tag": px(type_scale["font_tag"]),
         "--font-title": px(type_scale["font_title"]),
         "--font-meta": px(type_scale["font_meta"]),

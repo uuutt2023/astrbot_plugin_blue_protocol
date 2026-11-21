@@ -96,7 +96,7 @@ class LayoutResolveTests(unittest.TestCase):
 
     def test_type_scale_present(self):
         spec = layout.resolve()
-        for key in ("banner", "pad_top", "cover_h", "font_tag", "font_title",
+        for key in ("banner", "pad_top", "font_tag", "font_title",
                     "font_meta", "font_body", "font_link", "font_foot"):
             self.assertIn(key, spec["type"])
             self.assertGreater(spec["type"][key], 0)
@@ -153,6 +153,13 @@ class RenderArticleTests(unittest.TestCase):
         html = render.render_article({**DETAIL, "title": "<script>x</script>"})
         self.assertNotIn("<script>x</script>", html)
         self.assertIn("&lt;script&gt;", html)
+
+    def test_cover_keeps_aspect_ratio(self):
+        """封面按正文宽度缩放，高度不裁剪（不设固定高度）。"""
+        html = render.render_article(DETAIL)
+        self.assertNotIn("--cover-h", html)
+        self.assertIn("height: auto", html)
+        self.assertNotIn("object-fit: cover", html.split(".cover {")[1].split("}")[0])
 
     def test_no_placeholder_left(self):
         html = render.render_article(DETAIL)

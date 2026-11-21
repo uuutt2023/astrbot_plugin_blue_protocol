@@ -74,7 +74,6 @@ THEME_COLORS: dict[str, dict[str, str]] = {
 _TYPE_RATIO: dict[str, float] = {
     "banner": 260 / 1280,
     "pad_top": 30 / 1280,
-    "cover_h": 400 / 1280,
     "font_tag": 14 / 1280,
     "font_title": 30 / 1280,
     "font_meta": 15 / 1280,
@@ -86,7 +85,6 @@ _TYPE_RATIO: dict[str, float] = {
 _TYPE_LIMITS: dict[str, tuple[float, float]] = {
     "banner": (120.0, 420.0),
     "pad_top": (12.0, 60.0),
-    "cover_h": (160.0, 700.0),
     "font_tag": (11.0, 18.0),
     "font_title": (20.0, 44.0),
     "font_meta": (12.0, 20.0),

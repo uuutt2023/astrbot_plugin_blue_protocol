@@ -34,8 +34,9 @@
     #if d.cover != "" {
       [
         #v(18pt)
-        #block(width: 100%, height: px(s.cover_h), radius: 5pt, clip: true)[
-          #image(d.cover, width: 100%, height: 100%, fit: "cover")
+        // 封面按正文栏宽度等比缩放，高度不裁剪（原图比例）
+        #block(width: 100%)[
+          #image(d.cover, width: 100%)
         ]
       ]
     }
