@@ -198,6 +198,7 @@ def make_event(
         ),
     )
     ev.get_platform_id = lambda: "napcat"
+    ev.plain_result = lambda text: {"type": "plain", "text": text}
     if bot is not None:
         ev.bot = bot
     return ev
@@ -215,6 +216,11 @@ def make_plugin(platform_insts=None, **cfg):
 
 def run(coro):
     return asyncio.run(coro)
+
+
+async def _collect(agen):
+    """把异步生成器的产出收成列表。"""
+    return [item async for item in agen]
 
 
 NEWS_ITEM = {
@@ -357,6 +363,89 @@ def test_command_prefixes():
     for text in ("星痕共鸣公告列表", "星痕最新公告", "天刀公告列表"):
         assert not bp_main.re.match(bp_main.T_LIST, text), text
         assert not bp_main.re.match(bp_main.T_LATEST, text), text
+
+
+def test_prefix_set_is_configurable():
+    """指令前缀由配置决定：默认 bp / blue protocol，改了立刻生效。"""
+    plugin, _, _ = make_plugin()
+    assert plugin._prefixes() == {"bp", "blueprotocol"}
+
+    # 自定义前缀
+    plugin2, _, _ = make_plugin(command_prefixes=["星痕", "xh"])
+    assert plugin2._prefixes() == {"星痕", "xh"}
+    assert plugin2._prefix_ok(make_event(text="星痕 list"), bp_main.T_LIST)
+    assert plugin2._prefix_ok(make_event(text="xh list"), bp_main.T_LIST)
+    # 旧前缀不再响应
+    assert not plugin2._prefix_ok(make_event(text="bp list"), bp_main.T_LIST)
+
+    # 字符串写法（面板传来的是逗号分隔的字符串）
+    plugin3, _, _ = make_plugin(command_prefixes="星痕, xh")
+    assert plugin3._prefixes() == {"星痕", "xh"}
+
+    # 空格不敏感：blue protocol 与 blueprotocol 是同一个
+    plugin4, _, _ = make_plugin(command_prefixes=["blue protocol"])
+    assert plugin4._prefix_ok(make_event(text="blueprotocol list"), bp_main.T_LIST)
+    assert plugin4._prefix_ok(make_event(text="blue protocol list"), bp_main.T_LIST)
+    assert not plugin4._prefix_ok(make_event(text="bp list"), bp_main.T_LIST)
+
+    # 一个都没配时退回默认
+    plugin5, _, _ = make_plugin(command_prefixes=[])
+    assert plugin5._prefixes() == {"bp", "blueprotocol"}
+
+
+def test_prefix_check_rejects_foreign_words():
+    """不是配置里那个前缀的普通聊天不能被当成指令。"""
+    plugin, _, _ = make_plugin()
+    for text in ("看看 latest 公告", "hello list", "protocol list", "星星 list"):
+        assert not plugin._prefix_ok(make_event(text=text), bp_main.T_LIST), text
+
+
+def test_command_handlers_ignore_foreign_prefix():
+    """前缀不对时，指令处理器不产出任何回复（消息继续交给 LLM）。"""
+    plugin, _, _ = make_plugin(command_prefixes=["星痕"])
+
+    # help 指令：前缀不对就静默
+    out = run(_collect(plugin.help_cmd(make_event(text="bp help"))))
+    assert out == [], out
+
+    # 前缀对了才回
+    out = run(_collect(plugin.help_cmd(make_event(text="星痕 help"))))
+    assert out and "list" in out[0]["text"]
+    # 帮助文案里要列出实际生效的前缀
+    assert "星痕" in out[0]["text"]
+
+    # list 指令同理（网络被桩掉，只看有没有回复）
+    plugin2, _, _ = make_plugin(command_prefixes=["星痕"])
+    out = run(_collect(plugin2.list_cmd(make_event(text="bp list"))))
+    assert out == [], out
+
+
+def test_command_handlers_keep_docstring_first():
+    """指令处理器的 docstring 必须是函数体第一条 —— AstrBot 靠它显示指令说明。"""
+    import ast
+
+    tree = ast.parse(open(bp_main.__file__, encoding="utf-8").read())
+    checked = 0
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.AsyncFunctionDef) and node.name.endswith("_cmd")):
+            continue
+        checked += 1
+        first = node.body[0]
+        is_doc = (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        )
+        assert is_doc, f"{node.name} 的 docstring 不在第一条"
+        assert ast.get_docstring(node), f"{node.name} 没有 docstring"
+    assert checked >= 6, checked
+
+
+def test_prefix_labels_show_configured_values():
+    plugin, _, _ = make_plugin()
+    assert plugin._prefix_labels() == ["bp", "blue protocol"]
+    plugin2, _, _ = make_plugin(command_prefixes=["星痕", "xh"])
+    assert plugin2._prefix_labels() == ["星痕", "xh"]
 
 
 def test_parse_list_args():

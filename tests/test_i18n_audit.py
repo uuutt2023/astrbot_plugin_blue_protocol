@@ -43,6 +43,7 @@ class TypstSurfaceTests(unittest.TestCase):
         "typst_long_theme",
         "typst_para_spacing",
         "typst_line_height",
+        "command_prefixes",
     )
 
     def test_conf_schema_has_typst_keys(self):
@@ -127,6 +128,57 @@ class TypstSurfaceTests(unittest.TestCase):
         # Typst 与 HTML 都得引它
         self.assertIn("from .. import layout", _read(ROOT / "bpnews" / "typst" / "render.py"))
         self.assertIn("from . import layout", _read(ROOT / "bpnews" / "render.py"))
+
+    def test_panel_has_commands_section(self):
+        """面板要有指令区块：前缀输入 + 指令速查表。"""
+        html = _read(PANEL / "index.html")
+        self.assertIn('id="cfgPrefixes"', html)
+        self.assertIn('id="cmdList"', html)
+        self.assertIn('id="btnSavePrefixes"', html)
+        self.assertIn('data-i18n="card.commands.title"', html)
+        shell = _read(PANEL / "shell.js")
+        self.assertIn("nav.commands", shell)
+        js = _read(PANEL / "app.js")
+        self.assertIn("renderCommandList", js)
+        self.assertIn("command_prefixes", js)
+
+    def test_panel_i18n_has_commands_keys(self):
+        i18n = _read(PANEL / "i18n.js")
+        for key in (
+            "nav.commands",
+            "card.commands.title",
+            "card.commands.hint",
+            "lbl.prefixes",
+            "lbl.prefixesHint",
+            "btn.savePrefixes",
+            "toast.prefixesSaved",
+            "group.renderer",
+            "group.layout",
+            "group.output",
+            "cmd.list",
+            "cmd.latest",
+            "cmd.latestDedup",
+            "cmd.push",
+            "cmd.reset",
+            "cmd.help",
+        ):
+            self.assertIn(key, i18n, key)
+
+    def test_no_stale_phone_sized_wording(self):
+        """长图早就不是手机宽度了，别的地方不能再写 phone-sized。"""
+        targets = [
+            ROOT / "main.py",
+            ROOT / "README.md",
+            PANEL / "i18n.js",
+            PANEL / "index.html",
+            ROOT / ".astrbot-plugin" / "i18n" / "zh-CN.json",
+            ROOT / ".astrbot-plugin" / "i18n" / "en-US.json",
+        ]
+        for path in targets:
+            text = _read(path)
+            self.assertNotIn("phone-sized", text, path.name)
+            self.assertNotIn("手机长图", text, path.name)
+            self.assertNotIn("手机视口长图", text, path.name)
 
     def test_requirements_declares_typst(self):
         req = _read(ROOT / "requirements.txt")

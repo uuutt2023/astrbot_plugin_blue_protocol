@@ -27,6 +27,8 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+from . import commands
+
 try:  # AstrBot >= 4.26
     from astrbot.api.web import error_response, json_response, request
 
@@ -228,6 +230,10 @@ class NewsPageController:
         except (TypeError, ValueError):
             return default
 
+    def _prefixes_cfg(self) -> list[str]:
+        """当前生效的指令前缀（面板展示用）。"""
+        return commands.resolve(self._cfg("command_prefixes", None))
+
     def _float_cfg(self, key: str, default: float) -> float:
         """取浮点配置。坏值回退默认。"""
         try:
@@ -347,6 +353,7 @@ class NewsPageController:
                     "typst_line_height": round(
                         self._float_cfg("typst_line_height", 1.8), 3
                     ),
+                    "command_prefixes": self._prefixes_cfg(),
                 },
                 "typst": _typst_status(self.data_dir),
                 "defaults": {"shot_max_height": 5000, "shot_quality": 88},
@@ -673,6 +680,15 @@ class NewsPageController:
         if theme not in ("dark", "light"):
             return self._err("typst_long_theme 只能是 dark 或 light")
 
+        # 没传这个字段就保持原样；传了但一个都没填才算错
+        raw_prefixes = payload.get("command_prefixes", None)
+        if raw_prefixes is None:
+            prefixes = self._prefixes_cfg()
+        else:
+            prefixes = commands.parse(raw_prefixes)
+            if not prefixes:
+                return self._err("指令前缀至少要填一个（多个之间用逗号或空格分开）")
+
         raw_ppi = payload.get("typst_ppi", self._cfg("typst_ppi", 144))
         raw_timeout = payload.get("typst_timeout", self._cfg("typst_timeout", 60))
         try:
@@ -698,6 +714,7 @@ class NewsPageController:
             config["typst_timeout"] = typst_timeout
             config["typst_long_theme"] = theme
             config["typst_line_height"] = line_height
+            config["command_prefixes"] = prefixes
             for key, value in long_numbers.items():
                 config[key] = value
         except Exception as exc:
@@ -719,6 +736,7 @@ class NewsPageController:
                 "typst_timeout": typst_timeout,
                 "typst_long_theme": theme,
                 "typst_line_height": line_height,
+                "command_prefixes": prefixes,
                 **long_numbers,
             },
             "Long-image settings saved",

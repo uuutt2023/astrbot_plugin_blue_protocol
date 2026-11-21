@@ -254,7 +254,48 @@
       cfg.typst_para_spacing == null ? "14" : cfg.typst_para_spacing;
     byId("cfgTypstLineHeight").value =
       cfg.typst_line_height == null ? "1.8" : cfg.typst_line_height;
+    renderPrefixes();
     renderTypstStatus();
+  }
+
+  /* 指令前缀：输入框 + 当前生效的前缀 + 指令速查表 */
+  function currentPrefixes() {
+    var cfg = (state.meta || {}).config || {};
+    var list = cfg.command_prefixes;
+    if (typeof list === "string") list = list.split(/[,，;；\s]+/);
+    if (!Array.isArray(list)) list = ["bp", "blue protocol"];
+    list = list.map(function (x) { return String(x || "").trim(); })
+               .filter(function (x) { return !!x; });
+    return list.length ? list : ["bp", "blue protocol"];
+  }
+
+  function renderPrefixes() {
+    var input = byId("cfgPrefixes");
+    if (!input) return;
+    var prefixes = currentPrefixes();
+    if (document.activeElement !== input) input.value = prefixes.join(", ");
+    byId("cfgPrefixHint").textContent = t('lbl.prefixesHint', { count: prefixes.length });
+    renderCommandList(prefixes);
+  }
+
+  function renderCommandList(prefixes) {
+    var box = byId("cmdList");
+    if (!box) return;
+    var head = prefixes[0] || "bp";
+    var rows = [
+      ['cmd.list', 'cmd.listDesc'],
+      ['cmd.latest', 'cmd.latestDesc'],
+      ['cmd.latestDedup', 'cmd.latestDedupDesc'],
+      ['cmd.push', 'cmd.pushDesc'],
+      ['cmd.reset', 'cmd.resetDesc'],
+      ['cmd.help', 'cmd.helpDesc']
+    ];
+    var html = '';
+    rows.forEach(function (row) {
+      html += '<div class="cmd-item"><code>' + esc(head + ' ' + t(row[0])) +
+              '</code><span>' + esc(t(row[1])) + '</span></div>';
+    });
+    box.innerHTML = html;
   }
 
   function renderTypstStatus() {
@@ -440,6 +481,24 @@
     });
   }
 
+  function savePrefixes() {
+    var btn = byId("btnSavePrefixes");
+    var raw = byId("cfgPrefixes").value;
+    btn.disabled = true;
+    byId("cmdHint").textContent = t('btn.saving');
+    apiPost("page/config/save", { command_prefixes: raw }).then(function (res) {
+      if (res && res.status !== "ok") {
+        byId("cmdHint").textContent = (res && res.message) || t("loadFailed");
+        return;
+      }
+      byId("cmdHint").textContent = "";
+      return loadMeta().then(function () { toast(t('toast.prefixesSaved')); });
+    }).catch(fail).then(function () {
+      btn.disabled = false;
+      byId("cmdHint").textContent = "";
+    });
+  }
+
   // ---------- 选择群弹窗 ----------
 
   function loadPickGroups(refresh) {
@@ -551,6 +610,7 @@
     byId("btnClearShots").addEventListener("click", clearShots);
     byId("btnClearCache").addEventListener("click", clearCache);
     byId("btnSaveConfig").addEventListener("click", saveConfig);
+    byId("btnSavePrefixes").addEventListener("click", savePrefixes);
     byId("btnPickGroup").addEventListener("click", openPick);
     byId("pickClose").addEventListener("click", function () { byId("pickMask").hidden = true; });
     byId("btnPickApply").addEventListener("click", applyPick);
@@ -606,6 +666,7 @@
     renderRecords();
     renderShots();
     renderTypstStatus();   // 只刷新文案，不动用户还没保存的输入框
+    renderCommandList(currentPrefixes());
     if (state.pickLoaded) renderPickList();
   }
   if (window.PanelI18n && window.PanelI18n.onChange) window.PanelI18n.onChange(rerender);

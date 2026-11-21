@@ -16,7 +16,8 @@ window.AstrBotPluginPage = {
   config:{shot_enabled:true,shot_quality:85,shot_max_height:8000,
    typst_enabled:true,typst_ppi:144,typst_timeout:60,
    typst_long_width:1280,typst_long_body_width:1258,typst_long_border:11,
-   typst_long_theme:'dark',typst_para_spacing:14,typst_line_height:1.8},
+   typst_long_theme:'dark',typst_para_spacing:14,typst_line_height:1.8,
+   command_prefixes:['bp','blue protocol']},
   typst:{available:true,font_source:'system',managed_fonts:0,system_cjk:true},
   match_types:[{value:'exact',label:'精确'}],formats:[{value:'text',label:'文本'}],
   rules:[],scopes:[{value:'global',label:'全局'}],stats:{total:12,enabled:10,hits:12345},enabled:true
@@ -182,6 +183,34 @@ class PanelLayoutTests(unittest.TestCase):
   self.assertEqual(body['typst_long_border'],'24')
   self.assertEqual(body['typst_para_spacing'],'22')
   self.assertEqual(body['typst_line_height'],'2.1')
+
+ def test_commands_section(self):
+  """指令区块：前缀输入框 + 指令速查表 + 保存。"""
+  p=self.page
+  p.locator('.nav-item').nth(4).click()
+  expect(p.locator('#panel-commands')).to_be_visible()
+  expect(p.locator('#cfgPrefixes')).to_have_value('bp, blue protocol')
+  # 速查表列出六条指令
+  expect(p.locator('#cmdList .cmd-item')).to_have_count(6)
+  expect(p.locator('#cmdList .cmd-item').first.locator('code')).to_have_text('bp list [category] [page]')
+  # 保存要把前缀发出去
+  p.locator('#cfgPrefixes').fill('星痕, xh')
+  p.locator('#btnSavePrefixes').click()
+  self.assertEqual(p.evaluate('window.lastPost.body.command_prefixes'),'星痕, xh')
+
+ def test_settings_card_is_grouped(self):
+  """图片设置卡按组分区，数字项排成网格。"""
+  p=self.page
+  p.locator('.nav-item').nth(3).click()
+  expect(p.locator('#panel-settings .group-title')).to_have_count(3)
+  expect(p.locator('#panel-settings .field-grid')).to_have_count(3)
+  # 版式那一组是三列网格
+  grid=p.locator('#panel-settings .field-grid').nth(1)
+  expect(grid.locator('.field')).to_have_count(6)
+  # 窄屏要收成一列，不能横向溢出
+  p.set_viewport_size({'width':390,'height':844})
+  p.wait_for_timeout(200)
+  self.assertTrue(p.evaluate('document.documentElement.scrollWidth <= innerWidth+1'))
 
  def test_language_select_in_appearance(self):
   """「界面外观」里的 Language 下拉同样能切语言。"""

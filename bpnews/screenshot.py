@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""公告长图渲染：把公告正文渲染成手机视口的长图。
+"""公告长图渲染：把公告正文渲染成整页长图。
 
 和「截官网网页」不同，这里是**自己渲染**：《星痕共鸣》的公告正文由
 ``searchNews.php`` 接口直接给 HTML（``msg.sContent``），套进
@@ -208,7 +208,7 @@ async def shot_article(
     max_bytes: int = MAX_BYTES,
     width: int = VIEWPORT_W,
 ) -> tuple[str, bool]:
-    """把一段 HTML 渲染成手机视口长图，返回 (jpg 路径, 是否因过长被截断)。
+    """把一段 HTML 渲染成整页长图，返回 (jpg 路径, 是否因过长被截断)。
 
     按 key（通常是公告 id）做文件缓存：同一条公告推多个群只渲染一次。
     浏览器组件未就绪时触发后台下载并抛 RuntimeError("DOWNLOADING")，

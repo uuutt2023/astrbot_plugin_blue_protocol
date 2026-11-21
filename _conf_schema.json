@@ -71,6 +71,12 @@
     "type": "float",
     "default": 1.8
   },
+  "command_prefixes": {
+    "description": "i18n:config.command_prefixes.description",
+    "hint": "i18n:config.command_prefixes.hint",
+    "type": "list",
+    "default": ["bp", "blue protocol"]
+  },
   "shot_enabled": {
     "description": "i18n:config.shot_enabled.description",
     "hint": "i18n:config.shot_enabled.hint",

@@ -57,7 +57,7 @@ When the long image cannot be rendered (Playwright unavailable), the plugin fall
 
 Toggle **light / dark** in the top right, or pick "Follow AstrBot" under *Appearance*; light is the default when the host theme is unavailable. The theme and compact-layout preference are stored in the current browser, the layout adapts on narrow screens, and wide tables scroll horizontally.
 
-- Navigation: Overview, Push targets, Push records, Image settings, Image cache, Appearance.
+- Navigation: Overview, Push targets, Push records, Image settings, Commands, Image cache, Appearance.
 - Stat cards keep their label/value rows aligned, as do the checkboxes and filter toolbar.
 - Plain local HTML / CSS / JavaScript — no build step and no external icon fonts; it talks to the backend through the AstrBot Plugin Pages bridge.
 
@@ -77,6 +77,8 @@ Toggle **light / dark** in the top right, or pick "Follow AstrBot" under *Appear
 ## Commands
 
 Commands are English and start with `bp`. The aliases `blue protocol` and `blueprotocol` also work, so the prefix never collides with another plugin's bare-word commands.
+
+**The prefixes are configurable** — set `command_prefixes` in the plugin config, or edit them in the panel under *Commands*. Several prefixes are allowed, spaces inside a prefix are optional, and changes apply immediately without restarting the plugin.
 
 | Command | Description |
 |---|---|
@@ -99,6 +101,8 @@ bp latest
 
 Category aliases: `notice` = `announcement` / `announcements` / `ann`, `event` = `events` / `activity`, `all` = `latest`. Matching is case-insensitive.
 
+A message whose prefix is not in the configured list is left alone — it goes to the LLM as usual instead of being swallowed by this plugin.
+
 ## Internationalisation
 
 The plugin ships two languages, English and 中文 (Simplified Chinese).
@@ -115,6 +119,7 @@ The announcement titles and bodies themselves stay in the game's original Chines
 
 | Key | Default | Description |
 |---|---|---|
+| `command_prefixes` | `["bp", "blue protocol"]` | Words that trigger the bot in chat. Several are allowed and spaces are optional (`blueprotocol` works too). Changes apply immediately |
 | `news_groups` | `[]` | Groups that receive scheduled pushes (a **group id** or `unified_msg_origin`, multiple allowed). You can also send `bp push on` in a group, or **tick groups by name in the plugin panel** |
 | `list_page_size` | `10` | Announcements per page in `bp list` (1-30) |
 | `shot_enabled` | `true` | Render announcements as a long image; when off it falls back to the dark card image |
@@ -135,6 +140,7 @@ The announcement titles and bodies themselves stay in the game's original Chines
 
 AstrBot WebUI → Plugins → Blue Protocol: Star Resonance → open the panel (needs AstrBot ≥ 4.24.1):
 
+- **Commands** — change the words that trigger the bot (several are allowed), with a quick reference of every command below.
 - **Push targets** — tick groups by **name** (the dropdown shows `group name (group id)`), so you never have to remember an id. `Select groups…` searches by name or id, and `Refresh group list` pulls every group the bot is in at once.
 - **Check & push now** — run a round immediately instead of waiting for the 5-minute poll. Per-group `Test push` can force a re-send to verify delivery.
 - **Push records** — the last announcement pushed to each group, with per-group or global reset.
@@ -228,7 +234,7 @@ Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），�
 
 右上角可一键切换 **浅色 / 深色**，也可在「界面外观」中选择跟随 AstrBot；未提供宿主主题时默认浅色。主题及紧凑布局偏好保存在当前浏览器，手机窄屏下自动调整布局，宽表格可横向滚动。
 
-- 页面导航：总览、推送群、推送记录、公告图设置、截图缓存、界面外观。
+- 页面导航：总览、推送群、推送记录、公告图设置、指令、截图缓存、界面外观。
 - 统一统计卡片标签与数值排版、复选框及筛选工具栏对齐。
 - 使用本地 HTML / CSS / JavaScript，无需前端构建或外部图标字体；通过 AstrBot Plugin Pages 桥接访问后端。
 
@@ -239,7 +245,7 @@ Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），�
 | 指令 | 说明 |
 |---|---|
 | `bp list [分类] [页码]` | 公告列表。分类可选 `all` / `notice` / `news` / `event`（默认 `all`），页码从 1 开始，每页条数由 `list_page_size` 控制 |
-| `bp latest` | 最新公告：分类/标题/日期/链接/摘要 + 手机长图 |
+| `bp latest` | 最新公告：分类/标题/日期/链接/摘要 + 长图 |
 | `bp latest dedup` | 同上，但只有出新公告才回复（按群去重） |
 | `bp push on\|off\|status\|test` | 本群自动推送，每 **5 分钟** 检查一次（`on` / `off` / `test` 需管理员） |
 | `bp reset` | 清空本群推送记录（需管理员） |
@@ -263,6 +269,7 @@ Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），�
 
 | 配置项 | 默认 | 说明 |
 |---|---|---|
+| `command_prefixes` | `["bp", "blue protocol"]` | 在聊天里触发机器人的关键词。可以填多个，前缀里的空格可省略（`blueprotocol` 也认）。改完立刻生效 |
 | `news_groups` | `[]` | 定时推送的群（填**群号**或 unified_msg_origin，可多个）。也可以在群里发 `bp push on` 自动登记本群，**或直接在插件面板里按群名勾选** |
 | `list_page_size` | `10` | 公告列表每页条数（1-30） |
 | `shot_enabled` | `true` | 公告图用整页长图；关掉则回到深色卡片图 |
@@ -283,6 +290,7 @@ Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），�
 
 AstrBot WebUI → 插件 → Blue Protocol: Star Resonance → 打开面板（需要 AstrBot ≥ 4.24.1）：
 
+- **指令**：改机器人的指令前缀（可填多个），下面还有一张指令速查表。
 - **推送群**：按**群名**勾选要推送的群，不用记群号；`选择群…` 里可以搜索群名或群号，还能「刷新群列表」把机器人所在的全部群一次拉出来。
 - **立刻检查并推送**：不用等 5 分钟轮询周期；单群「测试推送」还能强制重发，用来验证群里到底收不收得到。
 - **推送记录**：每个群上次推的公告标题，支持单群/全部重置。

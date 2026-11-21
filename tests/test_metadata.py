@@ -158,6 +158,7 @@ def test_plugin_files_present():
         os.path.join("pages", "blueprotocol-panel", "style.css"),
         os.path.join("pages", "blueprotocol-panel", "blueprotocol-icon.png"),
         os.path.join("bpnews", "layout.py"),
+        os.path.join("bpnews", "commands.py"),
         os.path.join("bpnews", "typst", "__init__.py"),
         os.path.join("bpnews", "typst", "render.py"),
         os.path.join("bpnews", "typst", "worker.py"),
@@ -186,8 +187,9 @@ def test_no_chinese_command_triggers():
     main_src = _read("main.py")
     assert "星痕共鸣公告列表" not in main_src
     assert "星痕最新公告" not in main_src
-    # 英文前缀必须在
-    assert re.search(r'\(?:bp\|blue\\s\*protocol\)', main_src), "找不到英文指令前缀"
+    # 默认前缀是英文的，而且写成了「可配置」而不是写死在正则里
+    assert '"bp", "blue protocol"' in _read("bpnews/commands.py"), "找不到英文默认前缀"
+    assert "_PREFIX_TOKEN" in main_src, "指令前缀应该改成运行时可配置"
 
 
 def main():

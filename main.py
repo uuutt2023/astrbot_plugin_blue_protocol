@@ -2,7 +2,7 @@
 """Blue Protocol: Star Resonance 官方公告插件（AstrBot）。
 
 《蓝色协议：星痕共鸣》官方公告查询与推送：公告列表（支持分页与分类）、最新公告
-（正文摘要 + 手机长图）、按群去重、定时自动推送（每 5 分钟检查，有更新自动推送），
+（正文摘要 + 浏览器宽度长图）、按群去重、定时自动推送（每 5 分钟检查，有更新自动推送），
 以及一个 Web 面板用来按群名管理推送群。
 
 指令统一用英文，前缀 ``bp``（也认 ``blue protocol`` / ``blueprotocol``），
@@ -26,7 +26,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-from bpnews import api, layout, screenshot
+from bpnews import api, commands, layout, screenshot
 from bpnews.typst import render as typst_render
 from bpnews.api import TAG_ALL, resolve_tag, tag_display_name
 from bpnews.groups import (
@@ -41,21 +41,25 @@ from bpnews.render import card_data, render_article
 PLUGIN_NAME = "astrbot_plugin_blue_protocol"
 GAME_NAME = "Blue Protocol: Star Resonance"
 
-# 指令前缀：bp / blue protocol / blueprotocol 都认
-_PREFIX = r"(?:bp|blue\s*protocol)"
+# 指令前缀：默认认 bp / blue protocol（写成 blueprotocol 也算同一个）。
+#
+# 前缀不写死在正则里 —— 正则只负责抓「前缀 + 子命令」，抓到的前缀再和配置
+# command_prefixes 比对。这样用户在 WebUI / 面板里改完前缀立刻生效，不用重启插件。
 # 给帮助文案用的人话前缀
 _PREFIX_TEXT = "bp"
+# 前缀最长三段（"blue protocol" 这种带空格的也认）
+_PREFIX_TOKEN = r"[^\s]{1,24}(?:\s+[^\s]{1,24}){0,2}"
 # 列表指令的分类参数（英文别名）
 _CATEGORIES = (
     r"all|latest|notice|announcement|announcements|ann|news|event|events|activity"
 )
 
-T_LIST = rf"^{_PREFIX}\s+list(?:\s+({_CATEGORIES}))?(?:\s+(\d+))?\s*$"
-T_LATEST = rf"^{_PREFIX}\s+latest\s*$"
-T_LATEST_DEDUP = rf"^{_PREFIX}\s+latest\s+dedup\s*$"
-T_PUSH = rf"^{_PREFIX}\s+push(?:\s+(on|off|status|test))?\s*$"
-T_RESET = rf"^{_PREFIX}\s+reset\s*$"
-T_HELP = rf"^{_PREFIX}\s+help\s*$"
+T_LIST = rf"^(?P<prefix>{_PREFIX_TOKEN})\s+list(?:\s+(?P<cat>{_CATEGORIES}))?(?:\s+(?P<page>\d+))?\s*$"
+T_LATEST = rf"^(?P<prefix>{_PREFIX_TOKEN})\s+latest\s*$"
+T_LATEST_DEDUP = rf"^(?P<prefix>{_PREFIX_TOKEN})\s+latest\s+dedup\s*$"
+T_PUSH = rf"^(?P<prefix>{_PREFIX_TOKEN})\s+push(?:\s+(?P<arg>on|off|status|test))?\s*$"
+T_RESET = rf"^(?P<prefix>{_PREFIX_TOKEN})\s+reset\s*$"
+T_HELP = rf"^(?P<prefix>{_PREFIX_TOKEN})\s+help\s*$"
 
 _RE_CACHE: dict[str, re.Pattern] = {}
 
@@ -219,14 +223,50 @@ class BlueProtocolNewsPlugin(Star):
     # ---------------- 工具 ----------------
 
     @staticmethod
-    def _cap(pattern: str, event: AstrMessageEvent) -> str:
+    def _match(pattern: str, event: AstrMessageEvent):
+        """按正则匹配消息（带缓存）。"""
         rx = _RE_CACHE.get(pattern)
         if rx is None:
             rx = _RE_CACHE[pattern] = re.compile(pattern)
-        m = rx.match(event.message_str.strip())
-        if not m or not m.groups():
+        return rx.match(event.message_str.strip())
+
+    @staticmethod
+    def _cap(pattern: str, event: AstrMessageEvent, group: str = "arg") -> str:
+        m = BlueProtocolNewsPlugin._match(pattern, event)
+        if not m:
             return ""
-        return (m.group(1) or "").strip()
+        try:
+            return (m.group(group) or "").strip()
+        except (IndexError, re.error):
+            return ""
+
+    @staticmethod
+    def _normalize_prefix(text: str) -> str:
+        """前缀归一（去掉空白 + 小写），规则见 bpnews.commands。"""
+        return commands.normalize(text)
+
+    def _prefixes(self) -> set[str]:
+        """当前生效的前缀集合。
+
+        每次现读配置 —— 用户在 WebUI 或面板里改完立刻生效，不用重启插件。
+        """
+        return commands.to_set(self.config.get("command_prefixes", None))
+
+    def _prefix_labels(self) -> list[str]:
+        """给帮助文案用的前缀列表（按配置原样展示）。"""
+        return commands.resolve(self.config.get("command_prefixes", None))
+
+    def _prefix_ok(self, event: AstrMessageEvent, pattern: str) -> bool:
+        """消息用的前缀是不是配置里那批之一。
+
+        不匹配就安静地不响应（插件处理器不产出结果时，AstrBot 会把消息
+        继续交给 LLM，不会把普通聊天吃掉）。
+        """
+        m = self._match(pattern, event)
+        if not m:
+            return False
+        prefix = (m.groupdict().get("prefix") or "").strip()
+        return self._normalize_prefix(prefix) in self._prefixes()
 
     @staticmethod
     def _group_key(event: AstrMessageEvent) -> str:
@@ -499,6 +539,8 @@ class BlueProtocolNewsPlugin(Star):
     @filter.regex(T_LIST)
     async def list_cmd(self, event: AstrMessageEvent):
         '''bp list [category] [page]: announcement list (category: notice/news/event/all)'''
+        if not self._prefix_ok(event, T_LIST):
+            return
         if not self._limit.ok(self._group_key(event)):
             yield event.plain_result("请求过于频繁，请稍后再试。")
             return
@@ -535,23 +577,25 @@ class BlueProtocolNewsPlugin(Star):
     @staticmethod
     def _parse_list_args(event: AstrMessageEvent) -> tuple[str, int]:
         """从「bp list notice 2」里拆出 (分类, 页码)。"""
-        rx = _RE_CACHE.get(T_LIST) or re.compile(T_LIST)
-        m = rx.match(event.message_str.strip())
+        m = BlueProtocolNewsPlugin._match(T_LIST, event)
         tag_name = ""
         page = 1
         if m:
-            if m.group(1):
-                tag_name = m.group(1)
-            if m.group(2):
+            groups = m.groupdict()
+            if groups.get("cat"):
+                tag_name = groups["cat"]
+            if groups.get("page"):
                 try:
-                    page = int(m.group(2))
+                    page = int(groups["page"])
                 except ValueError:
                     page = 1
         return tag_name, page
 
     @filter.regex(T_LATEST)
     async def latest_cmd(self, event: AstrMessageEvent):
-        '''bp latest: the newest announcement — summary text + phone-sized long image'''
+        '''bp latest: the newest announcement — summary text + long image'''
+        if not self._prefix_ok(event, T_LATEST):
+            return
         if not self._limit.ok(self._group_key(event)):
             yield event.plain_result("请求过于频繁，请稍后再试。")
             return
@@ -561,6 +605,8 @@ class BlueProtocolNewsPlugin(Star):
     @filter.regex(T_LATEST_DEDUP)
     async def latest_dedup_cmd(self, event: AstrMessageEvent):
         '''bp latest dedup: only replies when there is a new announcement (per-group dedup)'''
+        if not self._prefix_ok(event, T_LATEST_DEDUP):
+            return
         if not self._limit.ok(self._group_key(event)):
             yield event.plain_result("请求过于频繁，请稍后再试。")
             return
@@ -570,7 +616,15 @@ class BlueProtocolNewsPlugin(Star):
     @filter.regex(T_HELP)
     async def help_cmd(self, event: AstrMessageEvent):
         '''bp help: command usage'''
+        if not self._prefix_ok(event, T_HELP):
+            return
         p = _PREFIX_TEXT
+        labels = self._prefix_labels()
+        aliases = " / ".join(labels)
+        # 只有确实存在带空格的前缀时，才提示「空格可省略」
+        has_space = any(" " in x for x in labels)
+        space_note = "（带空格的前缀写成连写也认）" if has_space else ""
+        space_note_en = " (spaces optional)" if has_space else ""
         yield event.plain_result(
             f"{GAME_NAME} 公告机器人\n\n"
             f"{p} list [分类] [页码]\n"
@@ -578,14 +632,14 @@ class BlueProtocolNewsPlugin(Star):
             f"    分类：all | notice | news | event   （默认 all）\n"
             f"    页码：从 1 开始（默认 1）\n\n"
             f"{p} latest\n"
-            f"    最新公告 —— 摘要文字 + 手机长图\n\n"
+            f"    最新公告 —— 摘要文字 + 长图\n\n"
             f"{p} latest dedup\n"
             f"    最新公告，只有出新公告时才回复\n\n"
             f"{p} push on | off | status | test\n"
             f"    本群自动推送，每 5 分钟检查一次（on / off / test 需要管理员）\n\n"
             f"{p} reset\n"
             f"    清空本群的公告推送记录（需要管理员）\n\n"
-            f"前缀别名：bp / blue protocol / blueprotocol\n\n"
+            f"当前前缀：{aliases}{space_note}\n\n"
             f"—— English ——\n"
             f"{p} list [category] [page]\n"
             f"    announcement list\n"
@@ -599,7 +653,7 @@ class BlueProtocolNewsPlugin(Star):
             f"    auto-push for this group (on / off / test need admin)\n\n"
             f"{p} reset\n"
             f"    clear this group's push record (admin)\n\n"
-            f"Prefix aliases: bp / blue protocol / blueprotocol"
+            f"Current prefixes: {aliases}{space_note_en}"
         )
 
     async def _latest(self, event: AstrMessageEvent, force: bool) -> list:
@@ -654,6 +708,8 @@ class BlueProtocolNewsPlugin(Star):
     @filter.regex(T_PUSH)
     async def push_cmd(self, event: AstrMessageEvent):
         '''bp push on|off|status|test: toggle auto-push for this group (checked every 5 minutes)'''
+        if not self._prefix_ok(event, T_PUSH):
+            return
         arg = self._cap(T_PUSH, event)
         if not self._group_id(event):
             yield event.plain_result("该指令只能在群聊中使用。")
@@ -702,6 +758,8 @@ class BlueProtocolNewsPlugin(Star):
     @filter.regex(T_RESET)
     async def reset_cmd(self, event: AstrMessageEvent):
         '''bp reset: clear this group's push record (admin only)'''
+        if not self._prefix_ok(event, T_RESET):
+            return
         if not self._group_id(event):
             yield event.plain_result("该指令只能在群聊中使用。")
             return

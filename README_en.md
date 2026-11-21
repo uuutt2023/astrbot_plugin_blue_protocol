@@ -57,7 +57,7 @@ When the long image cannot be rendered (Playwright unavailable), the plugin fall
 
 Toggle **light / dark** in the top right, or pick "Follow AstrBot" under *Appearance*; light is the default when the host theme is unavailable. The theme and compact-layout preference are stored in the current browser, the layout adapts on narrow screens, and wide tables scroll horizontally.
 
-- Navigation: Overview, Push targets, Push records, Image settings, Image cache, Appearance.
+- Navigation: Overview, Push targets, Push records, Image settings, Commands, Image cache, Appearance.
 - Stat cards keep their label/value rows aligned, as do the checkboxes and filter toolbar.
 - Plain local HTML / CSS / JavaScript — no build step and no external icon fonts; it talks to the backend through the AstrBot Plugin Pages bridge.
 
@@ -77,6 +77,8 @@ Toggle **light / dark** in the top right, or pick "Follow AstrBot" under *Appear
 ## Commands
 
 Commands are English and start with `bp`. The aliases `blue protocol` and `blueprotocol` also work, so the prefix never collides with another plugin's bare-word commands.
+
+**The prefixes are configurable** — set `command_prefixes` in the plugin config, or edit them in the panel under *Commands*. Several prefixes are allowed, spaces inside a prefix are optional, and changes apply immediately without restarting the plugin.
 
 | Command | Description |
 |---|---|
@@ -99,6 +101,8 @@ bp latest
 
 Category aliases: `notice` = `announcement` / `announcements` / `ann`, `event` = `events` / `activity`, `all` = `latest`. Matching is case-insensitive.
 
+A message whose prefix is not in the configured list is left alone — it goes to the LLM as usual instead of being swallowed by this plugin.
+
 ## Internationalisation
 
 The plugin ships two languages, English and 中文 (Simplified Chinese).
@@ -115,6 +119,7 @@ The announcement titles and bodies themselves stay in the game's original Chines
 
 | Key | Default | Description |
 |---|---|---|
+| `command_prefixes` | `["bp", "blue protocol"]` | Words that trigger the bot in chat. Several are allowed and spaces are optional (`blueprotocol` works too). Changes apply immediately |
 | `news_groups` | `[]` | Groups that receive scheduled pushes (a **group id** or `unified_msg_origin`, multiple allowed). You can also send `bp push on` in a group, or **tick groups by name in the plugin panel** |
 | `list_page_size` | `10` | Announcements per page in `bp list` (1-30) |
 | `shot_enabled` | `true` | Render announcements as a long image; when off it falls back to the dark card image |
@@ -135,6 +140,7 @@ The announcement titles and bodies themselves stay in the game's original Chines
 
 AstrBot WebUI → Plugins → Blue Protocol: Star Resonance → open the panel (needs AstrBot ≥ 4.24.1):
 
+- **Commands** — change the words that trigger the bot (several are allowed), with a quick reference of every command below.
 - **Push targets** — tick groups by **name** (the dropdown shows `group name (group id)`), so you never have to remember an id. `Select groups…` searches by name or id, and `Refresh group list` pulls every group the bot is in at once.
 - **Check & push now** — run a round immediately instead of waiting for the 5-minute poll. Per-group `Test push` can force a re-send to verify delivery.
 - **Push records** — the last announcement pushed to each group, with per-group or global reset.

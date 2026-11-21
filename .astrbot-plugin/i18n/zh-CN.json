@@ -2,7 +2,7 @@
   "metadata": {
     "display_name": "Blue Protocol: Star Resonance",
     "short_desc": "Blue Protocol: Star Resonance 公告查询与自动推送",
-    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文摘要 + 本地 Typst 排版的浏览器宽度长图，主题/宽度/行距可调）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），带 Web 面板按群名管理推送群、手动推送与长图画廊。"
+    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文摘要 + 本地 Typst 排版的浏览器宽度长图，主题/宽度/行距可调）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），指令前缀可自定义，带 Web 面板按群名管理推送群、改前缀与长图参数。"
   },
   "config": {
     "news_groups": {
@@ -14,8 +14,8 @@
       "hint": "「bp list」一次返回多少条。取 1-30 之间的整数"
     },
     "shot_enabled": {
-      "description": "公告图使用手机整页长图",
-      "hint": "开启后把公告正文渲染成手机视口长图；关闭或渲染失败时回退为深色卡片图"
+      "description": "公告图使用整页长图",
+      "hint": "开启后把公告正文渲染成整页长图；关闭或渲染失败时回退为深色卡片图"
     },
     "shot_max_height": {
       "description": "长图最大高度（CSS 像素，0 = 不截断）",
@@ -64,6 +64,10 @@
     "typst_line_height": {
       "description": "行高（倍数）",
       "hint": "默认 1.8，1.2-2.5 之间比较合适"
+    },
+    "command_prefixes": {
+      "description": "指令前缀",
+      "hint": "机器人指令的触发词，可填多个。空格可省略（填「blue protocol」时，blueprotocol 也认）。改完立刻生效，不用重启插件"
     }
   },
   "views": {
@@ -83,7 +87,7 @@
       "description": "公告列表（支持分类与翻页）"
     },
     "bp_latest": {
-      "description": "最新公告（正文摘要 + 手机长图）"
+      "description": "最新公告（正文摘要 + 长图）"
     },
     "bp_latest_dedup": {
       "description": "最新公告（有新公告才返回，按群去重）"

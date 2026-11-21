@@ -107,6 +107,51 @@ class LayoutResolveTests(unittest.TestCase):
         self.assertNotEqual(base, layout.fingerprint(layout.resolve(width=1600)))
 
 
+class CommandPrefixTests(unittest.TestCase):
+    """指令前缀的解析与归一（bpnews/commands.py）。"""
+
+    def test_defaults(self):
+        from bpnews import commands
+
+        assert commands.resolve(None) == ["bp", "blue protocol"]
+        assert commands.to_set(None) == {"bp", "blueprotocol"}
+
+    def test_string_is_split_on_commas_only(self):
+        from bpnews import commands
+
+        # 逗号分隔；一段里的空格属于前缀本身
+        assert commands.parse("bp, blue protocol") == ["bp", "blue protocol"]
+        assert commands.parse("星痕，xh") == ["星痕", "xh"]
+        assert commands.parse("a;b") == ["a", "b"]
+
+    def test_list_keeps_spaces_inside_items(self):
+        from bpnews import commands
+
+        assert commands.parse(["bp", "blue protocol"]) == ["bp", "blue protocol"]
+
+    def test_normalize_ignores_case_and_spaces(self):
+        from bpnews import commands
+
+        assert commands.normalize("Blue Protocol") == "blueprotocol"
+        assert commands.normalize("  blue   protocol ") == "blueprotocol"
+        assert commands.normalize("BP") == "bp"
+
+    def test_empty_and_duplicate(self):
+        from bpnews import commands
+
+        assert commands.parse("") == []
+        assert commands.parse("  ,  ") == []
+        assert commands.parse("bp, bp") == ["bp"]
+
+    def test_to_set_dedupes(self):
+        from bpnews import commands
+
+        assert commands.to_set(["bp", "blue protocol", "blueprotocol"]) == {
+            "bp",
+            "blueprotocol",
+        }
+
+
 class RenderArticleTests(unittest.TestCase):
     """HTML 兜底长图。"""
 

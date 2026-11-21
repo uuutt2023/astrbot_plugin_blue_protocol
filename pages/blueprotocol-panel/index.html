@@ -61,60 +61,97 @@
     </div>
     <div class="card">
       <h2 data-i18n="card.settings.title">Long-image settings</h2>
-      <div class="field">
-        <label for="cfgTypstEnabled" data-i18n="lbl.typstEnabled">Typeset with local Typst</label>
-        <select id="cfgTypstEnabled">
-          <option value="1" data-i18n="opt.typstOn">Enabled (local Typst compiler)</option>
-          <option value="0" data-i18n="opt.typstOff">Disabled (browser screenshots)</option>
-        </select>
-        <span class="hint" id="cfgTypstStatus"></span>
+
+      <div class="field-group">
+        <h3 class="group-title" data-i18n="group.renderer">Renderer</h3>
+        <div class="field-grid cols-2">
+          <div class="field">
+            <label for="cfgTypstEnabled" data-i18n="lbl.typstEnabled">Typeset with local Typst</label>
+            <select id="cfgTypstEnabled">
+              <option value="1" data-i18n="opt.typstOn">Enabled (local Typst compiler)</option>
+              <option value="0" data-i18n="opt.typstOff">Disabled (browser screenshots)</option>
+            </select>
+            <span class="hint" id="cfgTypstStatus"></span>
+          </div>
+          <div class="field">
+            <label for="cfgShotEnabled" data-i18n="lbl.longImage">Render announcements as a long image</label>
+            <select id="cfgShotEnabled">
+              <option value="1" data-i18n="opt.longImageOn">Enabled (render the announcement body)</option>
+              <option value="0" data-i18n="opt.longImageOff">Disabled (use the dark card image)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label for="cfgTypstTheme" data-i18n="lbl.typstTheme">Long-image theme</label>
-        <select id="cfgTypstTheme">
-          <option value="dark" data-i18n="opt.themeDark">Dark</option>
-          <option value="light" data-i18n="opt.themeLight">Light</option>
-        </select>
+
+      <div class="field-group">
+        <h3 class="group-title" data-i18n="group.layout">Long-image layout</h3>
+        <div class="field-grid">
+          <div class="field">
+            <label for="cfgTypstTheme" data-i18n="lbl.typstTheme">Long-image theme</label>
+            <select id="cfgTypstTheme">
+              <option value="dark" data-i18n="opt.themeDark">Dark</option>
+              <option value="light" data-i18n="opt.themeLight">Light</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cfgTypstWidth" data-i18n="lbl.canvasWidth">Canvas width (pixels)</label>
+            <input type="text" id="cfgTypstWidth" placeholder="1280">
+          </div>
+          <div class="field">
+            <label for="cfgTypstBodyWidth" data-i18n="lbl.bodyWidth">Text column width (pixels, 0 = auto)</label>
+            <input type="text" id="cfgTypstBodyWidth" placeholder="1258">
+          </div>
+          <div class="field">
+            <label for="cfgTypstBorder" data-i18n="lbl.borderWidth">Border width (pixels)</label>
+            <input type="text" id="cfgTypstBorder" placeholder="11">
+          </div>
+          <div class="field">
+            <label for="cfgTypstParaSpacing" data-i18n="lbl.paraSpacing">Paragraph spacing (pixels)</label>
+            <input type="text" id="cfgTypstParaSpacing" placeholder="14">
+          </div>
+          <div class="field">
+            <label for="cfgTypstLineHeight" data-i18n="lbl.lineHeight">Line height (multiplier)</label>
+            <input type="text" id="cfgTypstLineHeight" placeholder="1.8">
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label for="cfgTypstWidth" data-i18n="lbl.canvasWidth">Canvas width (pixels)</label>
-        <input type="text" id="cfgTypstWidth" placeholder="1280">
+
+      <div class="field-group">
+        <h3 class="group-title" data-i18n="group.output">Output</h3>
+        <div class="field-grid">
+          <div class="field">
+            <label for="cfgShotHeight" data-i18n="lbl.maxHeight">Maximum height (CSS pixels, 0 = no limit)</label>
+            <input type="text" id="cfgShotHeight" placeholder="5000">
+          </div>
+          <div class="field">
+            <label for="cfgShotQuality" data-i18n="lbl.quality">JPEG quality (1-100)</label>
+            <input type="text" id="cfgShotQuality" placeholder="88">
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label for="cfgTypstBodyWidth" data-i18n="lbl.bodyWidth">Text column width (pixels, 0 = auto)</label>
-        <input type="text" id="cfgTypstBodyWidth" placeholder="1258">
-      </div>
-      <div class="field">
-        <label for="cfgTypstBorder" data-i18n="lbl.borderWidth">Border width (pixels)</label>
-        <input type="text" id="cfgTypstBorder" placeholder="11">
-      </div>
-      <div class="field">
-        <label for="cfgTypstParaSpacing" data-i18n="lbl.paraSpacing">Paragraph spacing (pixels)</label>
-        <input type="text" id="cfgTypstParaSpacing" placeholder="14">
-      </div>
-      <div class="field">
-        <label for="cfgTypstLineHeight" data-i18n="lbl.lineHeight">Line height (multiplier)</label>
-        <input type="text" id="cfgTypstLineHeight" placeholder="1.8">
-      </div>
-      <div class="field">
-        <label for="cfgShotEnabled" data-i18n="lbl.longImage">Render announcements as a long image</label>
-        <select id="cfgShotEnabled">
-          <option value="1" data-i18n="opt.longImageOn">Enabled (render the announcement body)</option>
-          <option value="0" data-i18n="opt.longImageOff">Disabled (use the dark card image)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="cfgShotHeight" data-i18n="lbl.maxHeight">Maximum height (CSS pixels, 0 = no limit)</label>
-        <input type="text" id="cfgShotHeight" placeholder="5000">
-      </div>
-      <div class="field">
-        <label for="cfgShotQuality" data-i18n="lbl.quality">JPEG quality (1-100)</label>
-        <input type="text" id="cfgShotQuality" placeholder="88">
-      </div>
+
       <div class="row">
         <button id="btnSaveConfig" class="primary" data-i18n="btn.saveSettings">Save settings</button>
         <span class="hint" id="cfgHint"></span>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="card.commands.title">Commands</h2>
+    <p class="hint" data-i18n="card.commands.hint">
+      The words that trigger the bot in chat. Several prefixes are allowed and spaces are
+      optional. Changes apply immediately — no restart needed.
+    </p>
+    <div class="field">
+      <label for="cfgPrefixes" data-i18n="lbl.prefixes">Command prefixes</label>
+      <input type="text" id="cfgPrefixes" placeholder="bp, blue protocol">
+      <span class="hint" id="cfgPrefixHint"></span>
+    </div>
+    <div class="cmd-list" id="cmdList"></div>
+    <div class="row">
+      <button id="btnSavePrefixes" class="primary" data-i18n="btn.savePrefixes">Save prefixes</button>
+      <span class="hint" id="cmdHint"></span>
     </div>
   </div>
 

@@ -17,7 +17,8 @@
       ['groups', 'nav.groups', 'DELIVERY', [0]],
       ['records', 'nav.records', 'HISTORY', [1]],
       ['settings', 'nav.settings', 'RENDER SETTINGS', [2]],
-      ['cache', 'nav.cache', 'IMAGE ARCHIVE', [3]]
+      ['commands', 'nav.commands', 'COMMANDS', [3]],
+      ['cache', 'nav.cache', 'IMAGE ARCHIVE', [4]]
     ]
   };
   var root = document.documentElement;

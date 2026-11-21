@@ -210,6 +210,7 @@ def test_meta_reads_config():
         "typst_long_theme": "dark",
         "typst_para_spacing": 14,
         "typst_line_height": 1.8,
+        "command_prefixes": ["bp", "blue protocol"],
     }
     assert data["limits"]["max_push_groups"] == page_mod.MAX_PUSH_GROUPS
     assert data["defaults"]["shot_quality"] == 88
@@ -442,6 +443,7 @@ def test_save_config_validation_and_ok():
         "typst_long_body_width": 1258,
         "typst_long_border": 11,
         "typst_para_spacing": 14,
+        "command_prefixes": ["bp", "blue protocol"],
     }
     assert plugin.config["shot_max_height"] == 8000 and plugin.config.save_count == 1
     assert "saved" in msg.lower()
@@ -522,6 +524,33 @@ def test_save_config_long_image_layout():
     with_request(FakeRequest(body={"typst_long_border": 999}, method="POST"))
     ok, _, msg = unwrap(run(ctrl.save_config()))
     assert not ok and "0-200" in msg
+
+
+def test_save_config_command_prefixes():
+    """指令前缀能从面板保存；逗号/空格分隔都行。"""
+    plugin, ctrl, _ = make_case()
+    with_request(
+        FakeRequest(
+            body={"command_prefixes": "星痕, xh"},
+            method="POST",
+        )
+    )
+    ok, data, _ = unwrap(run(ctrl.save_config()))
+    assert ok
+    assert data["command_prefixes"] == ["星痕", "xh"]
+    assert plugin.config["command_prefixes"] == ["星痕", "xh"]
+
+    # 列表写法也收
+    with_request(
+        FakeRequest(body={"command_prefixes": ["bp", "blue protocol"]}, method="POST")
+    )
+    ok, data, _ = unwrap(run(ctrl.save_config()))
+    assert ok and data["command_prefixes"] == ["bp", "blue protocol"]
+
+    # 一个都没填要报错
+    with_request(FakeRequest(body={"command_prefixes": "  ,  "}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "前缀" in msg
 
 
 def test_meta_reports_typst_status():
