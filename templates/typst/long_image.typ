@@ -5,7 +5,10 @@
 //   width  画布宽度（默认 1280px，等同常见浏览器宽度）
 //   body   正文栏宽度（默认 1258px）
 //   border 正文栏左右两侧留白（默认 11px）
-// 主题（dark / light）、段间距、行高同样由 style 传入。
+// 主题（dark / light）、段间距、行高、模块间距同样由 style 传入。
+//
+// 正文按「块」排：kind = h1/h2/h3/h4（模块标题）、p（正文段落）、img（插图）。
+// 模块标题上方留 module 间距，标题与正文之间再留一点，模块就不会挤成一坨。
 #import "common.typ": *
 #let d = json("data.json")
 #let s = d.style
@@ -14,7 +17,9 @@
 
 #set page(width: px(s.width), height: auto, margin: 0pt, fill: c.bg)
 #set text(font: font_of(d), size: px(s.font_body), fill: c.body)
-#set par(leading: px(s.font_body) * s.leading, spacing: px(s.spacing))
+// 段间距由每块的 gap 统一控制，所以这里的 par spacing 归零，
+// 免得「块之间的留白」和「段之间的留白」叠加两次。
+#set par(leading: px(s.font_body) * s.leading, spacing: 0pt)
 
 #block(width: px(s.width))[
   #kv_banner(px(s.width), px(s.banner), url: d.at("kv", default: ""), c)
@@ -46,8 +51,7 @@
     #v(16pt)
 
     #for i in range(d.body.len()) {
-      [#runs(d.body.at(i).runs, c)]
-      [#if i < d.body.len() - 1 { parbreak() }]
+      [#block_of(d.body.at(i), c, s)]
     }
 
     #v(14pt)

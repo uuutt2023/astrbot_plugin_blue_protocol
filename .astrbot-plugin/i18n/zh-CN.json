@@ -2,7 +2,7 @@
   "metadata": {
     "display_name": "Blue Protocol: Star Resonance",
     "short_desc": "Blue Protocol: Star Resonance 公告查询与自动推送",
-    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文摘要 + 本地 Typst 排版的浏览器宽度长图，主题/宽度/行距可调）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），指令前缀可自定义，带 Web 面板按群名管理推送群、改前缀与长图参数。"
+    "desc": "《蓝色协议：星痕共鸣》官方公告推送：公告列表（支持分页与分类）、最新公告（正文按模块排版 —— 模块标题分层加金色竖条、模块间距可调、本地 Typst 排版的浏览器宽度长图）、按群去重、定时推送（每 5 分钟检查，有更新自动推送），指令前缀可自定义，带 Web 面板按群名管理推送群、改前缀与长图参数。"
   },
   "config": {
     "news_groups": {
@@ -64,6 +64,10 @@
     "typst_line_height": {
       "description": "行高（倍数）",
       "hint": "默认 1.8，1.2-2.5 之间比较合适"
+    },
+    "typst_module_spacing": {
+      "description": "模块间距（像素）",
+      "hint": "默认 34，模块标题上方的留白，公告分模块时调大更清爽"
     },
     "command_prefixes": {
       "description": "指令前缀",

@@ -40,6 +40,7 @@ DEFAULT_LONG_BORDER = layout.DEFAULT_BORDER
 DEFAULT_LONG_THEME = layout.DEFAULT_THEME
 DEFAULT_PARA_SPACING = layout.DEFAULT_PARA_SPACING
 DEFAULT_LINE_HEIGHT = layout.DEFAULT_LINE_HEIGHT
+DEFAULT_MODULE_SPACING = layout.DEFAULT_MODULE_SPACING
 
 
 def long_style(
@@ -50,6 +51,7 @@ def long_style(
     theme: str = DEFAULT_LONG_THEME,
     para_spacing: float = DEFAULT_PARA_SPACING,
     line_height: float = DEFAULT_LINE_HEIGHT,
+    module_spacing: float = DEFAULT_MODULE_SPACING,
     ppi: int = DEFAULT_PPI,
 ) -> dict[str, Any]:
     """把像素级的版式配置算成模板要用的样式表。
@@ -64,6 +66,7 @@ def long_style(
         theme=theme,
         para_spacing=para_spacing,
         line_height=line_height,
+        module_spacing=module_spacing,
     )
     style: dict[str, Any] = {
         "scale": 72.0 / float(max(72, min(300, int(ppi or DEFAULT_PPI)))),
@@ -72,6 +75,7 @@ def long_style(
         "border": spec["border"],
         "leading": spec["line_height"],
         "spacing": spec["para_spacing"],
+        "module": spec["module_spacing"],
     }
     style.update(spec["type"])
     return style
@@ -230,6 +234,43 @@ def _truncate(path: Path, max_height: int) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _prepare_inline_images(
+    data_dir: Path, blocks: list[dict[str, Any]], job_files: dict[str, Path | bytes]
+) -> list[dict[str, Any]]:
+    """把正文内嵌图落到本地，块里的 src 换成 job 目录里的文件名。
+
+    拿不到图就跳过这一张（不写回 src），模板会忽略空 src，
+    一张图下载失败不该让整张长图出不来。
+    """
+    for block in blocks:
+        if block.get("kind") != "img":
+            continue
+        src = str(block.get("src") or "")
+        if not src:
+            continue
+        path = assets.fetch_inline(data_dir, src)
+        if path is None:
+            block["src"] = ""
+            continue
+        job_files[path.name] = path
+        block["src"] = path.name
+        size = assets.image_size(path)
+        if size:
+            # 先记下原始宽度，再按版心宽度封顶（和网页的 max-width 一致：小图不放大）
+            block["w"] = int(size[0])
+    return blocks
+
+
+def _scale_inline_width(blocks: list[dict[str, Any]], body_width: int) -> None:
+    """按版心宽度给插图定显示宽度（小图不放大）。"""
+    for block in blocks:
+        if block.get("kind") != "img":
+            continue
+        natural = int(block.get("w") or 0)
+        if natural > 0:
+            block["w"] = min(natural, body_width)
+
+
 async def render_long_image(
     detail: dict[str, Any],
     data_dir: Path,
@@ -246,6 +287,7 @@ async def render_long_image(
     theme: str = DEFAULT_LONG_THEME,
     para_spacing: float = DEFAULT_PARA_SPACING,
     line_height: float = DEFAULT_LINE_HEIGHT,
+    module_spacing: float = DEFAULT_MODULE_SPACING,
 ) -> tuple[Path, bool]:
     """用 Typst 排一张公告长图，返回 (图片路径, 是否被截断)。"""
     spec = layout.resolve(
@@ -255,6 +297,7 @@ async def render_long_image(
         theme=theme,
         para_spacing=para_spacing,
         line_height=line_height,
+        module_spacing=module_spacing,
     )
     style = long_style(
         width=spec["width"],
@@ -263,6 +306,7 @@ async def render_long_image(
         theme=spec["theme"],
         para_spacing=spec["para_spacing"],
         line_height=spec["line_height"],
+        module_spacing=spec["module_spacing"],
         ppi=ppi,
     )
     key = str(detail.get("news_id") or detail.get("url") or detail.get("title") or "")
@@ -279,6 +323,14 @@ async def render_long_image(
         raise TypstRenderError("Typst 找不到中文字体，无法排版公告正文")
 
     content = str(detail.get("content") or "")
+    blocks = layout.apply_gaps(
+        html_to_blocks(content),
+        para_spacing=spec["para_spacing"],
+        module_spacing=spec["module_spacing"],
+    )
+    job_files: dict[str, Path | bytes] = {}
+    _prepare_inline_images(data_dir, blocks, job_files)
+    _scale_inline_width(blocks, spec["body"])
     data = {
         "title": str(detail.get("title") or ""),
         "tag": str(detail.get("tag") or "公告"),
@@ -290,10 +342,9 @@ async def render_long_image(
         "theme": spec["theme"],
         "colors": spec["colors"],
         "style": style,
-        "body": html_to_blocks(content),
+        "body": blocks,
     }
 
-    job_files: dict[str, Path | bytes] = {}
     kv = assets.ensure_kv(data_dir)
     if kv is not None:
         job_files["kv.jpg"] = kv

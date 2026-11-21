@@ -34,8 +34,18 @@ Data comes from the Tencent game announcement API behind the official site (`app
 | 主题 | `dark`（可切 `light`） | `typst_long_theme` |
 | 段落间距 | `14` px | `typst_para_spacing` |
 | 行高 | `1.8` | `typst_line_height` |
+| 模块间距 | `34` px | `typst_module_spacing` |
 
 Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），两条路出来的图长得一样。
+
+### 模块
+
+公告正文本来就是分模块写的，长图保留这个结构，不再把内容糊成一坨：
+
+- **模块标题**有三种认法 —— 显式的 `<h2>`/`<h3>` 标签、整行加粗的 `<strong>`、靠 `<br/>` 分行的短标题行（「以下为本次更新内容详情：」「1. 扭蛋活动轮换」）。一级模块左侧带金色竖条，小模块加粗。
+- **模块间距**（`typst_module_spacing`，默认 `34` px）是模块标题上方的留白，想更清爽就调大，想更紧凑就调小。
+- **正文内嵌图**会保留下来并按正文栏宽度缩放（太小的图不会被放大）。
+- 官网正文的**行内颜色会被丢掉**，深色浅色主题下文字都读得清。
 
 ## 公告长图
 
@@ -108,6 +118,7 @@ Typst 与浏览器兜底共用同一份版式定义（`bpnews/layout.py`），�
 | `typst_long_theme` | `dark` | 长图主题：`dark` 深色 / `light` 浅色（分享卡片始终是深色） |
 | `typst_para_spacing` | `14` | 段落间距（像素） |
 | `typst_line_height` | `1.8` | 行高（倍数） |
+| `typst_module_spacing` | `34` | 模块标题上方的留白（像素） |
 
 ## Web 面板用法
 

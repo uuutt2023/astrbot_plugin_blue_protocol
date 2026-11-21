@@ -806,6 +806,10 @@ class BlueProtocolNewsPlugin(Star):
                 self.config.get("typst_line_height", layout.DEFAULT_LINE_HEIGHT)
                 or layout.DEFAULT_LINE_HEIGHT
             ),
+            "module_spacing": float(
+                self.config.get("typst_module_spacing", layout.DEFAULT_MODULE_SPACING)
+                or layout.DEFAULT_MODULE_SPACING
+            ),
         }
 
     async def _news_image(

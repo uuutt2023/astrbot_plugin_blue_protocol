@@ -254,6 +254,8 @@
       cfg.typst_para_spacing == null ? "14" : cfg.typst_para_spacing;
     byId("cfgTypstLineHeight").value =
       cfg.typst_line_height == null ? "1.8" : cfg.typst_line_height;
+    byId("cfgTypstModuleSpacing").value =
+      cfg.typst_module_spacing == null ? "34" : cfg.typst_module_spacing;
     renderPrefixes();
     renderTypstStatus();
   }
@@ -471,7 +473,8 @@
       typst_long_body_width: byId("cfgTypstBodyWidth").value.trim(),
       typst_long_border: byId("cfgTypstBorder").value.trim(),
       typst_para_spacing: byId("cfgTypstParaSpacing").value.trim(),
-      typst_line_height: byId("cfgTypstLineHeight").value.trim()
+      typst_line_height: byId("cfgTypstLineHeight").value.trim(),
+      typst_module_spacing: byId("cfgTypstModuleSpacing").value.trim()
     }).then(function () {
       byId("cfgHint").textContent = "";
       return loadMeta().then(function () { toast(t('toast.settingsSaved')); });

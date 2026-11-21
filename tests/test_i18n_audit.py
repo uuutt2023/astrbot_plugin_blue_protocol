@@ -127,7 +127,11 @@ class TypstSurfaceTests(unittest.TestCase):
         self.assertIn('"light"', layout_src)
         # Typst 与 HTML 都得引它
         self.assertIn("from .. import layout", _read(ROOT / "bpnews" / "typst" / "render.py"))
-        self.assertIn("from . import layout", _read(ROOT / "bpnews" / "render.py"))
+        render_src = _read(ROOT / "bpnews" / "render.py")
+        self.assertIn("from . import htmlblocks, layout", render_src)
+        # 正文分块由 htmlblocks 提供，Typst 与网页共用
+        self.assertIn("htmlblocks.classify(", render_src)
+        self.assertIn("htmlblocks.to_html(", render_src)
 
     def test_panel_has_commands_section(self):
         """面板要有指令区块：前缀输入 + 指令速查表。"""

@@ -210,6 +210,7 @@ def test_meta_reads_config():
         "typst_long_theme": "dark",
         "typst_para_spacing": 14,
         "typst_line_height": 1.8,
+        "typst_module_spacing": 34,
         "command_prefixes": ["bp", "blue protocol"],
     }
     assert data["limits"]["max_push_groups"] == page_mod.MAX_PUSH_GROUPS
@@ -443,6 +444,7 @@ def test_save_config_validation_and_ok():
         "typst_long_body_width": 1258,
         "typst_long_border": 11,
         "typst_para_spacing": 14,
+        "typst_module_spacing": 34,
         "command_prefixes": ["bp", "blue protocol"],
     }
     assert plugin.config["shot_max_height"] == 8000 and plugin.config.save_count == 1
@@ -494,12 +496,14 @@ def test_save_config_long_image_layout():
                 "typst_long_border": 20,
                 "typst_para_spacing": 20,
                 "typst_line_height": 2.1,
+                "typst_module_spacing": 48,
             },
             method="POST",
         )
     )
     ok, data, _ = unwrap(run(ctrl.save_config()))
     assert ok
+    assert data["typst_module_spacing"] == 48
     assert data["typst_long_theme"] == "light"
     assert data["typst_long_width"] == 1440
     assert data["typst_long_body_width"] == 1400
@@ -522,6 +526,10 @@ def test_save_config_long_image_layout():
     assert not ok and "1.0-3.0" in msg
     # 边框越界
     with_request(FakeRequest(body={"typst_long_border": 999}, method="POST"))
+    ok, _, msg = unwrap(run(ctrl.save_config()))
+    assert not ok and "0-200" in msg
+    # 模块间距越界
+    with_request(FakeRequest(body={"typst_module_spacing": 9999}, method="POST"))
     ok, _, msg = unwrap(run(ctrl.save_config()))
     assert not ok and "0-200" in msg
 

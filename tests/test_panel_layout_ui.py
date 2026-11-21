@@ -206,7 +206,9 @@ class PanelLayoutTests(unittest.TestCase):
   expect(p.locator('#panel-settings .field-grid')).to_have_count(3)
   # 版式那一组是三列网格
   grid=p.locator('#panel-settings .field-grid').nth(1)
-  expect(grid.locator('.field')).to_have_count(6)
+  expect(grid.locator('.field')).to_have_count(7)
+  # 模块间距：模块标题上方的留白
+  expect(p.locator('#cfgTypstModuleSpacing')).to_have_value('34')
   # 窄屏要收成一列，不能横向溢出
   p.set_viewport_size({'width':390,'height':844})
   p.wait_for_timeout(200)

@@ -12,10 +12,13 @@
   --border: 11px;
   --para-gap: 14px;
   --line-height: 1.8;
+  --module-gap: 34px;
   --font-tag: 14px;
   --font-title: 30px;
   --font-meta: 15px;
   --font-body: 17px;
+  --font-h2: 24px;
+  --font-h3: 20px;
   --font-link: 14px;
   --font-foot: 13px;
   --banner-h: 260px;
@@ -80,9 +83,26 @@ body {
   word-break: break-word; overflow-wrap: anywhere;
   max-width: var(--body-w);
 }
-.body p { margin: 0 0 var(--para-gap); }
+/* 模块标题：留白由内联 margin-top 给（和 Typst 共用同一份 gap），这里只管样式。
+   h1/h2 是大模块（左侧金色竖条），h3/h4 是小模块。 */
+.body h1, .body h2 {
+  position: relative; padding-left: 12px;
+  font-size: var(--font-h2); font-weight: 800; color: var(--text);
+  line-height: 1.35; letter-spacing: .3px;
+}
+.body h1::before, .body h2::before {
+  content: ""; position: absolute; left: 0; top: .22em; bottom: .22em;
+  width: 3px; border-radius: 2px; background: var(--gold);
+}
+.body h3, .body h4 {
+  font-size: var(--font-h3); font-weight: 800; color: var(--text); line-height: 1.4;
+}
+.body p { margin: 0; }
+.body p.img { text-align: center; }
 .body br { content: ""; display: block; margin-bottom: 6px; }
-.body img { max-width: 100%; border-radius: 8px; }
+.body img { max-width: 100%; height: auto; border-radius: 8px; }
+.body a { color: var(--link); }
+.body strong { color: var(--text); }
 .body table { max-width: 100%; border-collapse: collapse; }
 .body td, .body th { border: 1px solid var(--line); padding: 4px 6px; font-size: 13px; }
 .link {

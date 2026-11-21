@@ -50,13 +50,83 @@
     if "br" in part {
       linebreak()
     } else {
-      text(
+      let body = text(
         weight: if part.at("b", default: false) { "bold" } else { "regular" },
         style: if part.at("i", default: false) { "italic" } else { "normal" },
         fill: if part.at("s", default: false) { c.dim } else { c.body },
       )[#part.at("t", default: "")]
+      let href = part.at("href", default: "")
+      if href != "" { link(href)[#body] } else { body }
     }
   }
+}
+
+// 模块标题。h1/h2 是大模块（带金色竖条），h3/h4 是小模块。
+//
+// 上方留 module 间距（模块之间的呼吸感），下方留一点，和正文拉开距离。
+#let heading(blk, c, s, level: 2) = {
+  let px(v) = v * s.scale * 1pt
+  let big = level <= 2
+  let size = if big { px(s.font_h2) } else { px(s.font_h3) }
+  [
+    #block(width: 100%)[
+      #set par(leading: size * 1.35)
+      #if big {
+        [
+          // 金色竖条：模块和正文之间最直接的视觉分界
+          #place(left + horizon, rect(
+            width: px(3),
+            height: 1em,
+            fill: c.gold,
+          ))
+          #h(px(9))
+        ]
+      }
+      #text(size: size, weight: "bold", fill: c.text)[
+        #runs(blk.at("runs", default: ()), c)
+      ]
+    ]
+  ]
+}
+
+// 正文段落。
+#let paragraph(blk, c) = {
+  block(width: 100%)[#runs(blk.at("runs", default: ()), c)]
+}
+
+// 公告内嵌插图：按版心宽度等比缩放（小图不放大，和网页的 max-width 一致）。
+#let picture(blk, c, s) = {
+  let px(v) = v * s.scale * 1pt
+  let src = blk.at("src", default: "")
+  if src != "" {
+    let w = blk.at("w", default: 0)
+    [
+      #block(width: 100%)[
+        #if w > 0 { image(src, width: px(w)) } else { image(src, width: 100%) }
+      ]
+    ]
+  }
+}
+
+// 一个排版块。块上方的留白由宿主侧算好（gap），两条渲染路径共用同一份。
+#let block_of(blk, c, s) = {
+  let px(v) = v * s.scale * 1pt
+  let kind = blk.at("kind", default: "p")
+  // 注意：if/else 链必须留在代码模式里，放进 [...] 内容块会被当成正文排出来
+  let body = if kind == "h1" {
+    heading(blk, c, s, level: 1)
+  } else if kind == "h2" {
+    heading(blk, c, s, level: 2)
+  } else if kind == "h3" {
+    heading(blk, c, s, level: 3)
+  } else if kind == "h4" {
+    heading(blk, c, s, level: 4)
+  } else if kind == "img" {
+    picture(blk, c, s)
+  } else {
+    paragraph(blk, c)
+  }
+  [#v(px(blk.at("gap", default: 0))) #body]
 }
 
 // 官方 KV 横幅（长图顶部）。width / height 是版心内的实际尺寸。

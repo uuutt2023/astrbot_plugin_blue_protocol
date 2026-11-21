@@ -12,7 +12,7 @@ import html as html_lib
 from pathlib import Path
 from typing import Any
 
-from . import layout
+from . import htmlblocks, layout
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
 ARTICLE_TEMPLATE = _TEMPLATE_DIR / "article.html"
@@ -49,12 +49,15 @@ def _style_css(spec: dict[str, Any]) -> str:
         "--border": f"{spec['border']}px",
         "--para-gap": px(spec["para_spacing"]),
         "--line-height": str(spec["line_height"]),
+        "--module-gap": px(spec["module_spacing"]),
         "--banner-h": px(type_scale["banner"]),
         "--pad-top": px(type_scale["pad_top"]),
         "--font-tag": px(type_scale["font_tag"]),
         "--font-title": px(type_scale["font_title"]),
         "--font-meta": px(type_scale["font_meta"]),
         "--font-body": px(type_scale["font_body"]),
+        "--font-h2": px(type_scale["font_h2"]),
+        "--font-h3": px(type_scale["font_h3"]),
         "--font-link": px(type_scale["font_link"]),
         "--font-foot": px(type_scale["font_foot"]),
     }
@@ -66,7 +69,10 @@ def _style_css(spec: dict[str, Any]) -> str:
 def render_article(detail: dict[str, Any], **layout_options: Any) -> str:
     """把公告详情 dict 渲染成整页 HTML（给 Playwright 截图用）。
 
-    ``layout_options`` 接受画布宽度/正文宽度/边框/主题/段间距/行高，
+    正文不是原样塞进去的，而是和 Typst 长图共用 :mod:`bpnews.htmlblocks`
+    的解析结果 —— 同样的模块划分、同样的留白，两条路长得一样。
+
+    ``layout_options`` 接受画布宽度/正文宽度/边框/主题/段间距/行高/模块间距，
     缺省时用 :mod:`bpnews.layout` 的默认值。
     """
     tmpl = _read(ARTICLE_TEMPLATE)
@@ -74,13 +80,19 @@ def render_article(detail: dict[str, Any], **layout_options: Any) -> str:
     tag = str(detail.get("tag") or "").strip() or "公告"
     time_text = str(detail.get("time") or "").strip()
     url = str(detail.get("url") or "").strip()
-    content = str(detail.get("content") or "").strip()
+    raw_content = str(detail.get("content") or "").strip()
     cover = str(detail.get("cover") or "").strip()
 
+    spec = layout.resolve(**layout_options)
+
+    blocks = layout.apply_gaps(
+        htmlblocks.classify(raw_content),
+        para_spacing=spec["para_spacing"],
+        module_spacing=spec["module_spacing"],
+    )
+    content = htmlblocks.to_html(blocks)
     if not content:
         content = "<p>（这条公告没有正文内容，点击原文链接查看）</p>"
-
-    spec = layout.resolve(**layout_options)
 
     replacements = {
         "{{TAG}}": f'<span class="tag">{html_lib.escape(tag)}</span>',

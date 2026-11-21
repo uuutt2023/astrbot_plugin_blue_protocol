@@ -337,6 +337,7 @@ class NewsPageController:
                     "typst_long_border": [0, 200],
                     "typst_para_spacing": [0, 120],
                     "typst_line_height": [1.0, 3.0],
+                    "typst_module_spacing": [0, 200],
                 },
                 "config": {
                     "shot_enabled": bool(self._cfg("shot_enabled", True)),
@@ -352,6 +353,9 @@ class NewsPageController:
                     "typst_para_spacing": self._int_cfg("typst_para_spacing", 14),
                     "typst_line_height": round(
                         self._float_cfg("typst_line_height", 1.8), 3
+                    ),
+                    "typst_module_spacing": self._int_cfg(
+                        "typst_module_spacing", 34
                     ),
                     "command_prefixes": self._prefixes_cfg(),
                 },
@@ -656,6 +660,7 @@ class NewsPageController:
             ("typst_long_body_width", 1258, 0, 4096),
             ("typst_long_border", 11, 0, 200),
             ("typst_para_spacing", 14, 0, 120),
+            ("typst_module_spacing", 34, 0, 200),
         ):
             raw = payload.get(key, self._cfg(key, default))
             if raw in (None, ""):

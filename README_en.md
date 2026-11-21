@@ -34,8 +34,18 @@ The layout is measured in **CSS pixels**, just like in a browser:
 | Theme | `dark` (or `light`) | `typst_long_theme` |
 | Paragraph spacing | `14` px | `typst_para_spacing` |
 | Line height | `1.8` | `typst_line_height` |
+| Module spacing | `34` px | `typst_module_spacing` |
 
 Both renderers share one layout definition (`bpnews/layout.py`), so the Typst image and the Playwright fallback come out looking the same.
+
+### Modules
+
+Announcements are written as a series of modules, so the long image keeps that structure instead of running everything together:
+
+- **Module headings** are detected three ways — an explicit `<h2>`/`<h3>` tag, a whole line wrapped in `<strong>`, or a short standalone line (`以下为本次更新内容详情：`, `1. 扭蛋活动轮换`). Top-level modules get a gold bar on the left; sub-modules are bold.
+- **Module spacing** (`typst_module_spacing`, default `34` px) is the blank space above a module heading — raise it for a roomier page, lower it for a denser one.
+- **Inline images** in the body are kept and scaled to the text column (small images are not blown up).
+- **Inline colours** from the official page are dropped, so text stays readable on both the dark and the light theme.
 
 ## Announcement long image
 
@@ -135,6 +145,7 @@ The announcement titles and bodies themselves stay in the game's original Chines
 | `typst_long_theme` | `dark` | Long-image theme: `dark` or `light` (the share card always stays dark) |
 | `typst_para_spacing` | `14` | Paragraph spacing in pixels |
 | `typst_line_height` | `1.8` | Line height multiplier |
+| `typst_module_spacing` | `34` | Blank space above a module heading, in pixels |
 
 ## Web panel (the recommended way to manage push targets)
 

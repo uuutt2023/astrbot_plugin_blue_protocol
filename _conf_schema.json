@@ -71,6 +71,12 @@
     "type": "float",
     "default": 1.8
   },
+  "typst_module_spacing": {
+    "description": "i18n:config.typst_module_spacing.description",
+    "hint": "i18n:config.typst_module_spacing.hint",
+    "type": "int",
+    "default": 34
+  },
   "command_prefixes": {
     "description": "i18n:config.command_prefixes.description",
     "hint": "i18n:config.command_prefixes.hint",

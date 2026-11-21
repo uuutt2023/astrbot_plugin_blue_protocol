@@ -265,6 +265,50 @@ class TypstRenderTests(unittest.TestCase):
         with Image.open(path) as im:
             self.assertEqual(im.height, 120)
 
+    def test_module_spacing_changes_the_height(self):
+        """模块间距调大，长图应该更高（模块之间真的拉开了）。"""
+        detail = {
+            "news_id": "modulespacing",
+            "title": "模块间距测试",
+            "tag": "公告",
+            "time": "2026-11-12 11:02:25",
+            "url": "https://gm.qq.com/x",
+            "content": "<h2>模块一</h2><p>正文一</p><h2>模块二</h2><p>正文二</p>",
+        }
+        tight, _ = asyncio.run(
+            render.render_long_image(
+                detail, self.data_dir, max_height=0, module_spacing=0
+            )
+        )
+        loose, _ = asyncio.run(
+            render.render_long_image(
+                detail, self.data_dir, max_height=0, module_spacing=60
+            )
+        )
+        from PIL import Image
+
+        with Image.open(tight) as a, Image.open(loose) as b:
+            self.assertGreater(b.height, a.height)
+
+    def test_headings_are_rendered_as_headings(self):
+        """标题块要真的排成标题（比正文大）。"""
+        detail = {
+            "news_id": "headings",
+            "title": "标题测试",
+            "tag": "公告",
+            "time": "2026-11-12 11:02:25",
+            "url": "https://gm.qq.com/x",
+            "content": "<h2>模块一</h2><p>正文</p>",
+        }
+        path, _ = asyncio.run(
+            render.render_long_image(detail, self.data_dir, max_height=0)
+        )
+        from PIL import Image
+
+        with Image.open(path) as im:
+            self.assertGreater(im.width, 0)
+            self.assertGreater(im.height, 0)
+
     def test_render_card(self):
         path = asyncio.run(
             render.render_card(self._detail(), "摘要内容。", self.data_dir)

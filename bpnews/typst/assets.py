@@ -27,22 +27,33 @@ def assets_dir(data_dir: Path) -> Path:
 
 def _download(url: str, target: Path, referer: str | None = None) -> bool:
     """下载到临时文件再原子替换；失败返回 False。"""
+    data = _download_bytes(url, referer=referer)
+    if data is None:
+        return False
+    tmp = target.with_name(f".{target.name}.part")
+    try:
+        tmp.write_bytes(data)
+        tmp.replace(target)
+        return True
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        return False
+
+
+def _download_bytes(url: str, referer: str | None = None) -> bytes | None:
+    """下载字节；失败返回 None。"""
     headers = {"User-Agent": "Mozilla/5.0"}
     if referer:
         headers["Referer"] = referer
-    tmp = target.with_name(f".{target.name}.part")
     try:
         req = urllib.request.Request(url, headers=headers)  # noqa: S310
         with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310
             data = resp.read(MAX_IMAGE_BYTES + 1)
-        if len(data) > MAX_IMAGE_BYTES or len(data) < 1024:
-            return False
-        tmp.write_bytes(data)
-        tmp.replace(target)
-        return True
     except Exception:  # noqa: BLE001 - 网络问题不该让整条渲染失败
-        tmp.unlink(missing_ok=True)
-        return False
+        return None
+    if len(data) > MAX_IMAGE_BYTES or len(data) < 1024:
+        return None
+    return data
 
 
 def _is_jpeg(path: Path) -> bool:
@@ -107,6 +118,67 @@ def fetch_cover(data_dir: Path, url: str) -> Path | None:
         return None
     name = f"cover_{hashlib.md5(url.encode()).hexdigest()[:16]}.jpg"
     return ensure_asset(data_dir, url, name)
+
+
+# 图片魔数 → 扩展名。官网的图 URL 后缀基本可靠，但仍有「PNG 挂 .jpg 名」的情况，
+# 所以按内容判定格式，别信扩展名。
+_IMAGE_MAGIC: tuple[tuple[bytes, str], ...] = (
+    (b"\x89PNG\r\n\x1a\n", ".png"),
+    (b"\xff\xd8\xff", ".jpg"),
+    (b"GIF87a", ".gif"),
+    (b"GIF89a", ".gif"),
+    (b"RIFF", ".webp"),
+    (b"BM", ".bmp"),
+)
+
+
+def _sniff_ext(data: bytes) -> str:
+    """按文件头判断图片格式。"""
+    for magic, ext in _IMAGE_MAGIC:
+        if data.startswith(magic):
+            return ext
+    return ""
+
+
+def fetch_inline(data_dir: Path, url: str) -> Path | None:
+    """公告正文里的插图。
+
+    和封面不同，正文插图很多是带透明通道的 PNG，转成 JPEG 会糊掉透明区域，
+    所以这里保留原始格式，只按内容判定扩展名（Typst 认扩展名）。
+    """
+    if not url:
+        return None
+    directory = assets_dir(data_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    stem = f"body_{hashlib.md5(url.encode()).hexdigest()[:16]}"
+    for cached in sorted(directory.glob(f"{stem}.*")):
+        if cached.is_file() and cached.stat().st_size > 1024:
+            return cached
+    data = _download_bytes(url, referer="https://gm.qq.com/")
+    if data is None:
+        return None
+    ext = _sniff_ext(data)
+    if not ext:
+        return None
+    target = directory / f"{stem}{ext}"
+    try:
+        target.write_bytes(data)
+    except OSError:
+        return None
+    return target
+
+
+def image_size(path: Path) -> tuple[int, int] | None:
+    """读图片尺寸；读不出来返回 None。"""
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    try:
+        with Image.open(path) as im:
+            return im.size
+    except Exception:  # noqa: BLE001 - 解不开就当没有尺寸信息
+        return None
 
 
 def usage_bytes(data_dir: Path) -> int:
